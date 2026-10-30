@@ -1,0 +1,8 @@
+素材来源与授权
+
+图标：game-icons.net，CC BY 3.0（https://game-icons.net），按作者署名如下：
+  carl-olsen：flame
+  delapouite：shield-bash、enrage、closed-doors、coins、sword-brandish、health-potion、sparkles、spiked-shoulder-armor、stone-wall、swords-power、mountain-cave、magic-axe
+  lorc：broadsword、whirlwind、shadow-follower、wolf-head、crossed-swords、fire-ring、sword-wound、horned-skull、laurels、raven、sprint、treasure-map、scroll-unfurled、stopwatch、hammer-drop、fist、target-arrows、wolf-howl、paw-print、double-shot、lightning-trio、bleeding-wound、heart-bottle、sun、cycle、cracked-shield、spiked-armor、barbute、anvil-impact、axe-swing、thorny-vine、rock、crescent-blade、wind-slap、boot-prints、plain-dagger、muscle-up、eyeball、dripping-blade、crown-coin、chained-heart、backup、shield-reflect、fire-silhouette、burning-embers、stomp、rolling-energy、pierced-body、skull-crack、bell-shield、ankh、dragon-head、skull-crossed-bones、daemon-skull
+
+字体：缝合像素字体 Fusion Pixel 12px 简体中文版，SIL OFL 1.1（https://github.com/TakWolf/fusion-pixel-font），授权文本见 assets/fonts/OFL.txt。
