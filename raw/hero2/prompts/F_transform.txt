@@ -1,0 +1,14 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight and momentum. Image 1 is the character's TRANSFORMED form, image 2 is his normal form. Unless a frame says otherwise, draw the TRANSFORMED form from image 1 exactly: white shoulder-length hair, glowing crimson eyes, wine-red long coat with gold buttons and trim, black trousers and boots, a hugely swollen crimson right arm with dark cracks ending in a giant claw, and a giant slab-like greatsword with a flat square tip and blood-red glowing engraved runes, gripped by the claw. It is heavy and slow, every move has huge weight.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 8. One continuous transformation sequence, from the normal form (image 2) into the transformed form (image 1).
+
+1. Normal form (image 2): standing, sword held low, right fist clenched and trembling.
+2. Normal form: doubling over, right arm clutched to the chest, the gold wrist ring cracking.
+3. The gold ring snaps and the bandages burst off the right arm in strips; the arm starts to swell red.
+4. The right arm swells huge and crimson, veins bulging; the sword in his hand begins to widen.
+5. The arm becomes the giant crimson claw; the sword unfolds into the giant slab blade, held low.
+6. Throwing the head back, eyes igniting crimson, the claw raised, coat flaring outward.
+7. Lowering into a heavy stance, the giant blade swung onto the shoulder.
+8. Final transformed idle pose exactly like image 1.
+
+Every frame: the SAME character, strict side view facing RIGHT (the body may twist, but the head and feet keep facing right; never face the camera, never turn away); identical character scale in every cell; within one row, feet on the same ground line unless the frame is airborne, in which case keep the real jump height inside the cell; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no slash effects, no motion trails, no chains, no dust (effects are added in code), no background objects, no extra characters, no gravestones, no text.

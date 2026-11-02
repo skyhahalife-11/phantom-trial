@@ -1,0 +1,3 @@
+HTTP 200
+saved ../hero2/strips/E_skills_1.png Create a single pixel-art sprite sheet based exactly on the provided reference character: white shoulder-length straight hair; wine-red fitted long coat with gold buttons and gold trim; black trousers
+usage {"input_tokens": 4653, "input_tokens_details": {"cache_write_tokens": 2058, "cached_tokens": 0}, "output_tokens": 608, "output_tokens_details": {"reasoning_tokens": 0}, "total_tokens": 5261, "cost_usd": 0.017631}

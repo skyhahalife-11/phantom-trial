@@ -1,0 +1,11 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight and momentum. Image 1 is the character's TRANSFORMED form, image 2 is his normal form. Unless a frame says otherwise, draw the TRANSFORMED form from image 1 exactly: white shoulder-length hair, glowing crimson eyes, wine-red long coat with gold buttons and trim, black trousers and boots, a hugely swollen crimson right arm with dark cracks ending in a giant claw, and a giant slab-like greatsword with a flat square tip and blood-red glowing engraved runes, gripped by the claw. It is heavy and slow, every move has huge weight.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 8. Row 1 is the jumping finisher, row 2 is the planted blade guard.
+
+Row 1, jumping finisher slam:
+1. Crouching low, blade gripped in both hands.  2. Leaping high, giant blade raised above the head, airborne.  3. Impact: crashing down, blade smashed into the ground with full force, deep crouch.  4. Rising slowly from the crouch, blade still in the ground.
+
+Row 2, planted blade guard (he plants the giant blade upright in front of him as a wall):
+5. Swinging the blade around to the front.  6. Slamming the blade upright into the ground in front as a wall, broad side facing right.  7. Braced behind the planted blade, shoulder and claw pressed against it, knees bent.  8. Same braced pose, straining.
+
+Every frame: the SAME character, strict side view facing RIGHT (the body may twist, but the head and feet keep facing right; never face the camera, never turn away); identical character scale in every cell; within one row, feet on the same ground line unless the frame is airborne, in which case keep the real jump height inside the cell; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no slash effects, no motion trails, no chains, no dust (effects are added in code), no background objects, no extra characters, no gravestones, no text.

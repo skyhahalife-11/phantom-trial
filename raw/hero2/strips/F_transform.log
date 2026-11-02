@@ -1,0 +1,3 @@
+HTTP 200
+saved ../hero2/strips/F_transform_1.png Create a single crisp pixel-art sprite sheet, using the two supplied reference images only as character design references. Canvas is a 4 columns × 2 rows grid of eight equal-sized animation cells, wit
+usage {"input_tokens": 6632, "input_tokens_details": {"cache_write_tokens": 3836, "cached_tokens": 0}, "output_tokens": 809, "output_tokens_details": {"reasoning_tokens": 20}, "total_tokens": 7441, "cost_usd": 0.02489}

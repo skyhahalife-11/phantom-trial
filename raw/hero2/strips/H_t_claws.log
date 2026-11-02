@@ -1,0 +1,3 @@
+HTTP 200
+saved ../hero2/strips/H_t_claws_1.png Create a single 4-column by 3-row pixel-art sprite sheet on a perfectly solid pure chroma green #00FF00 background. No grid lines, no labels, no numbers, no text, no watermark. Twelve equal-sized cell
+usage {"input_tokens": 6456, "input_tokens_details": {"cache_write_tokens": 3884, "cached_tokens": 0}, "output_tokens": 585, "output_tokens_details": {"reasoning_tokens": 0}, "total_tokens": 7041, "cost_usd": 0.021874}

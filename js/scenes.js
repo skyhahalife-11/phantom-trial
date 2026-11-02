@@ -11,6 +11,7 @@ const titleScene = {
     this.t += dt;
     if (bot.on && !this.started) { this.started = true; botState.left = botState.runs; startGame(); return; }
     if (input.hit('confirm') || (mouse.clicked && inRect(W / 2 - 160, 560, 320, 64))) startGame();
+    else if (pressed.has('KeyN') || (mouse.clicked && inRect(W / 2 + 180, 560, 260, 64))) setScene(roomScene);
   },
   draw() {
     drawBackdrop(0.62);
@@ -29,6 +30,7 @@ const titleScene = {
     });
     drawText(`生命 ${h.hp}　攻击 ${h.atk}`, W / 2 - 60, 516, 24, UI.c.mut, 'left', false);
     const b = pxButton(W / 2 - 160, 560, 320, 64, '开始试炼', { edge: UI.c.accent, color: UI.c.accent });
+    pxButton(W / 2 + 180, 560, 260, 64, 'N 大房间试玩（新）', { edge: '#a0e0ff', color: '#a0e0ff' });
     drawText('A/D 移动　J 攻击　K 跳跃　空格 闪避　U I O 技能　P 奥义　Esc 暂停　F11 全屏', W / 2, H - 30, 24, UI.c.mut, 'center');
   },
 };
@@ -172,6 +174,7 @@ const preloadList = [
 Promise.all([preload(preloadList), loadIcons(), document.fonts.load('24px FP'), document.fonts.load('48px FP')]).then(() => {
   setScene(titleScene);
   if (params.get('dbg')) debugJump(params.get('dbg'));
+  if (params.get('room2')) setScene(roomScene);
 });
 
 function botAfterRun() {

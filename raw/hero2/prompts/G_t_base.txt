@@ -1,0 +1,14 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight and momentum. Image 1 is the character's TRANSFORMED form, image 2 is his normal form. Unless a frame says otherwise, draw the TRANSFORMED form from image 1 exactly: white shoulder-length hair, glowing crimson eyes, wine-red long coat with gold buttons and trim, black trousers and boots, a hugely swollen crimson right arm with dark cracks ending in a giant claw, and a giant slab-like greatsword with a flat square tip and blood-red glowing engraved runes, gripped by the claw. It is heavy and slow, every move has huge weight.
+
+Layout: a 4 columns x 3 rows grid of 12 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 12. Row 1 is an idle loop, row 2 a heavy forward step, row 3 two heavy sweeping slashes.
+
+Row 1, transformed idle loop, giant blade resting on the shoulder, leaning forward, breathing heavily:
+1. Base pose.  2. Shoulders rise.  3. Peak of the breath, claw flexing.  4. Settling back.
+
+Row 2, heavy stomp step forward (slow, ground-shaking):
+5. Lifting the front foot high.  6. Body pitching forward over the raised foot.  7. Foot slamming down, knees bending under the weight.  8. Recovering upright, blade still on the shoulder.
+
+Row 3, heavy horizontal sweep then a backhand return sweep:
+9. Blade swung far back behind, body coiled.  10. Impact: giant horizontal sweep in front at waist height, claw arm fully extended.  11. Momentum carrying the blade back across; backhand return sweep, impact in front again.  12. Blade dragged low behind, body heaving.
+
+Every frame: the SAME character, strict side view facing RIGHT (the body may twist, but the head and feet keep facing right; never face the camera, never turn away); identical character scale in every cell; within one row, feet on the same ground line unless the frame is airborne, in which case keep the real jump height inside the cell; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no slash effects, no motion trails, no chains, no dust (effects are added in code), no background objects, no extra characters, no gravestones, no text.

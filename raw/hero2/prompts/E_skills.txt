@@ -1,0 +1,23 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight and momentum. Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line.
+
+Layout: a 4 columns x 3 rows grid of 12 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 12. Each row is one special skill.
+
+Row 1, piercing dash thrust (he rockets forward through enemies):
+1. Sword drawn back at the hip, body coiled low, leaning forward.
+2. Exploding forward, body nearly horizontal, sword pointing straight ahead, rear leg trailing far behind.
+3. Full speed, same stretched pose, coat and hair flat behind him.
+4. Skidding to a stop, turning the blade outward, low stance.
+
+Row 2, chain hook throw (an invisible chain is thrown from the right hand; the left hand holds the sword):
+5. Winding up, right arm pulled far back behind the body, sword held in the left hand low.
+6. Throwing, right arm whipping forward and fully extended, open hand.
+7. Holding the throw, right arm extended, body leaning forward.
+8. Yanking back hard, right arm pulled back to the chest, body leaning back as if pulling something heavy toward him.
+
+Row 3, upward ground heave (he wrenches the sword up out of the ground, launching enemies):
+9. Driving the sword point down into the ground in front, crouching low over it with both hands on the hilt.
+10. Straining, sword buried in the ground, body coiled, knees deeply bent.
+11. Impact: heaving the sword violently upward out of the ground in front, body rising.
+12. Sword raised high above the head, body stretched upward on the toes.
+
+Every frame: the SAME character, strict side view facing RIGHT (the body may twist, but the head and feet keep facing right; never face the camera, never turn away); identical character scale in every cell; within one row, feet on the same ground line unless the frame is airborne, in which case keep the real jump height inside the cell; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no slash effects, no motion trails, no chains, no dust (effects are added in code), no background objects, no extra characters, no gravestones, no text.

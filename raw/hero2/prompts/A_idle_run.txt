@@ -1,0 +1,21 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight and momentum. Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line.
+
+Layout: a 4 columns x 3 rows grid of 12 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 12. Row 1 is an idle loop, rows 2 and 3 are one continuous running loop.
+
+Row 1, idle breathing loop (4 frames), low ready stance, knees bent, both hands on the hilt, sword angled low in front:
+1. Neutral ready stance.
+2. Shoulders rise slightly as he breathes in, coat tails sway.
+3. Highest point of the breath, hair moves slightly.
+4. Shoulders settle back down, returning toward frame 1.
+
+Rows 2 and 3, running loop (8 frames), leaning forward, sword held in the right hand trailing low behind the body, coat tails and hair streaming back:
+5. Right foot contact.
+6. Pushing off, body lowest.
+7. Passing pose, left knee driving forward.
+8. Airborne stride, both feet off the ground.
+9. Left foot contact.
+10. Pushing off, body lowest.
+11. Passing pose, right knee driving forward.
+12. Airborne stride, leading back into frame 5.
+
+Every frame: the SAME character, strict side view facing RIGHT (the body may twist, but the head and feet keep facing right; never face the camera, never turn away); identical character scale in every cell; within one row, feet on the same ground line unless the frame is airborne, in which case keep the real jump height inside the cell; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no slash effects, no motion trails, no chains, no dust (effects are added in code), no background objects, no extra characters, no gravestones, no text.

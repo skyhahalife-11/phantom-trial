@@ -1,0 +1,23 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight and momentum. Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line.
+
+Layout: a 4 columns x 3 rows grid of 12 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 12. Rows show an air slash, a downward plunge attack, and a running thrust attack.
+
+Row 1, air slash (airborne the whole time):
+1. In the air, sword raised above and behind the head.
+2. Swinging the sword diagonally down in front while airborne.
+3. Impact: sword extended forward and down, body arched.
+4. Recovering in the air, sword returning to the side.
+
+Row 2, downward plunge attack (airborne, falling straight down):
+5. In the air, lifting the sword with both hands, blade pointing straight down.
+6. Diving downward, blade pointing straight down below the feet, body vertical.
+7. Impact pose, blade pointing straight down, knees bent, at the lowest point of the cell.
+8. Bouncing back up after the hit, body opening, sword swinging up to the side.
+
+Row 3, running thrust attack (forward momentum):
+9. Running, sword pulled back at the hip, leaning forward.
+10. Lunging forward into a long thrust, sword pointing straight ahead at chest height, rear leg fully extended.
+11. Full extension of the thrust, sliding forward, coat streaming back.
+12. Braking and pulling the sword back to the ready stance.
+
+Every frame: the SAME character, strict side view facing RIGHT (the body may twist, but the head and feet keep facing right; never face the camera, never turn away); identical character scale in every cell; within one row, feet on the same ground line unless the frame is airborne, in which case keep the real jump height inside the cell; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no slash effects, no motion trails, no chains, no dust (effects are added in code), no background objects, no extra characters, no gravestones, no text.

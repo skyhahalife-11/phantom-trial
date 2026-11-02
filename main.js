@@ -9,7 +9,7 @@ function createWindow() {
   });
   win.setMenuBarVisibility(false);
   const q = {};
-  for (const k of ['BOT', 'FAST', 'HERO', 'RUNS', 'AUTOSTART', 'RUN', 'DBG', 'LAYER', 'EV', 'GIVE', 'ROOM', 'ROBTEST']) if (process.env[k]) q[k.toLowerCase()] = process.env[k];
+  for (const k of ['BOT', 'FAST', 'HERO', 'RUNS', 'AUTOSTART', 'RUN', 'DBG', 'LAYER', 'EV', 'GIVE', 'ROOM', 'ROBTEST', 'ROOM2', 'DEMO']) if (process.env[k]) q[k.toLowerCase()] = process.env[k];
   win.loadFile('index.html', { query: q });
   win.webContents.on('before-input-event', (_e, input) => {
     if (input.type === 'keyDown' && input.key === 'F11') win.setFullScreen(!win.isFullScreen());

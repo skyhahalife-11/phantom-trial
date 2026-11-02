@@ -1,0 +1,12 @@
+Pixel art sprite sheet for a 2D side-scrolling action game. Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line.
+
+Layout: a 3 columns x 2 rows grid of six equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 6 of ONE continuous attack animation: a two-handed overhead diagonal slash.
+
+Frame 1: ready stance, both hands on the hilt, sword held upright in front of the chest.
+Frame 2: sword lifted back over the right shoulder, body leaning back slightly.
+Frame 3: sword raised to its highest point above and behind the head, knees bent, winding up.
+Frame 4: the sword has slashed diagonally from above down to the front, arms fully extended forward, front foot stepping forward into a lunge.
+Frame 5: sword tip stops near the ground in front of the body, torso leaning forward, follow-through.
+Frame 6: recovering back toward the frame 1 ready stance.
+
+Every frame: the SAME character in strict side view facing RIGHT, never turning toward the camera or away from it; identical character size in every cell; feet on the same baseline near the bottom of each cell; the whole body and the whole sword fully inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no motion blur, no slash effects, no background objects, no extra characters, no gravestones.

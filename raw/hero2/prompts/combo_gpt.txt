@@ -1,0 +1,23 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight and momentum. Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line.
+
+Layout: a 4 columns x 3 rows grid of twelve equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 12 of ONE continuous three-hit sword combo. Each hit flows directly into the next: the last pose of a hit is the wind-up of the next hit, the character never returns to a neutral standing pose in the middle.
+
+Row 1, hit one, diagonal downward slash:
+1. Low combat stance, knees bent, sword held low and angled back behind the body.
+2. Stepping forward, twisting the torso, sword swinging up over the right shoulder, coat tails lifting.
+3. Impact: the sword slashes diagonally down to the front, deep forward lunge, arms fully extended, coat and hair flung backward.
+4. Follow-through: sword low in front near the ground, torso twisted forward, weight on the front leg.
+
+Row 2, hit two, horizontal sweep:
+5. Pulling the sword back to the rear at waist height, torso coiled away from the enemy.
+6. Impact: a wide horizontal sweep at chest height, arms extended forward, rear foot pivoting, coat swinging around.
+7. The sword wraps past the front around the body, shoulders turned, momentum carrying through.
+8. Dropping into a deep crouch, sword dragged low behind, blade tip near the ground, ready to launch upward.
+
+Row 3, hit three, rising launcher slash:
+9. Deepest crouch, coiled like a spring, sword low behind.
+10. Impact: explosive upward slash in front of the body, rising onto the toes, sword arcing up.
+11. Sword fully raised above the head, body stretched upward, feet slightly off the ground, coat flaring.
+12. Landing back into the low combat stance of frame 1.
+
+Every frame: the SAME character, strict side view facing RIGHT (the body may twist, but the head and feet keep facing right; never face the camera, never turn away); identical character scale in every cell; feet near the same baseline; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no slash effects or motion trails (they will be added in code), no background objects, no extra characters, no gravestones.

@@ -136,6 +136,21 @@ function drawSprite(path, x, footY, h, flip, alpha = 1, flash = false, rot = 0, 
 let scene = null;
 function setScene(s) { scene = s; if (s.enter) s.enter(); }
 
+/* 逻辑高度固定 720。声明 wide 的场景在比 16:9 更宽的屏幕（多数手机）上把逻辑宽度 VW 拉长，不加黑边；
+   最多拉到 1280×1.34（约 21:9），再宽才留黑边。其余场景 VW 恒为 1280。 */
+let VW = W;
+function applyView() {
+  if (scene && scene.wide && canvas.width / canvas.height > W / H) {
+    view.scale = canvas.height / H;
+    VW = Math.min(canvas.width / view.scale, W * 1.34);
+  } else {
+    view.scale = Math.min(canvas.width / W, canvas.height / H);
+    VW = W;
+  }
+  view.ox = (canvas.width - VW * view.scale) / 2;
+  view.oy = (canvas.height - H * view.scale) / 2;
+}
+
 const FAST = Math.max(1, Number(params.get('fast')) || 1);
 let lastT = performance.now();
 function frame(now) {
@@ -144,12 +159,16 @@ function frame(now) {
   const dt = params.get('bot') ? 1 / 60 : real;
   for (let i = 0; i < FAST; i++) { if (scene) scene.update(dt); }
   input.endFrame();
+  applyView();
   ctx.setTransform(1, 0, 0, 1, 0, 0);
   ctx.fillStyle = '#000';
   ctx.fillRect(0, 0, canvas.width, canvas.height);
+  ctx.save();   // 裁剪区域会逐帧叠加，必须成对 save/restore，否则一直沿用第一帧的窄区域
   ctx.setTransform(view.scale, 0, 0, view.scale, view.ox, view.oy);
-  ctx.beginPath(); ctx.rect(0, 0, W, H); ctx.clip();
+  ctx.beginPath(); ctx.rect(0, 0, VW, H); ctx.clip();
   if (scene) scene.draw();
+  if (window.touchUI) touchUI.draw();
+  ctx.restore();
   requestAnimationFrame(frame);
 }
 requestAnimationFrame(frame);

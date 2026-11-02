@@ -1,0 +1,3 @@
+HTTP 200
+saved ../hero2/design_transformed_1.png Create a single full-body 2D pixel-art character sprite on a perfectly solid pure chroma green background (#00FF00). Strict orthographic side profile facing RIGHT, centered in frame, entire body and e
+usage {"input_tokens": 4147, "input_tokens_details": {"cache_write_tokens": 1705, "cached_tokens": 0}, "output_tokens": 455, "output_tokens_details": {"reasoning_tokens": 28}, "total_tokens": 4602, "cost_usd": 0.0146065}

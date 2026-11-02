@@ -1,0 +1,3 @@
+HTTP 200
+saved ../hero2/strips/C_air_runatk_1.png Create a single pixel-art sprite sheet image on a solid pure chroma green background #00FF00. Exact 4 columns x 3 rows grid of 12 equal-sized cells, with NO visible grid lines, text, numbers, logos, w
+usage {"input_tokens": 4565, "input_tokens_details": {"cache_write_tokens": 2011, "cached_tokens": 0}, "output_tokens": 567, "output_tokens_details": {"reasoning_tokens": 15}, "total_tokens": 5132, "cost_usd": 0.0169395}

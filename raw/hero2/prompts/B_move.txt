@@ -1,0 +1,23 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight and momentum. Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line.
+
+Layout: a 4 columns x 3 rows grid of 12 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 12. Rows show jumping, falling with a double jump, and a ground dash.
+
+Row 1, jump (rising):
+1. Crouching wind-up before the jump, knees deeply bent, sword held low behind.
+2. Pushing off the ground, body extending upward, feet leaving the ground.
+3. Rising in the air, knees tucked, coat trailing downward.
+4. Top of the jump, body compact, sword held close.
+
+Row 2, falling, landing and double jump:
+5. Falling, legs extending down, coat flaring upward.
+6. Landing, deep knee bend absorbing the impact, sword low.
+7. Double jump: mid-air forward somersault, body tucked into a ball, sword tucked along the body, upside down halfway.
+8. Double jump: finishing the somersault, body opening up again, upright in the air.
+
+Row 3, ground dash (a fast short burst forward):
+9. Dropping low, body leaning far forward, ready to burst.
+10. Dashing: body stretched horizontally forward, very low, rear leg extended far back, coat streaming straight back.
+11. Still dashing, same stretched pose, slightly different leg position.
+12. Braking: front foot planted, body leaning back to stop, coat swinging forward.
+
+Every frame: the SAME character, strict side view facing RIGHT (the body may twist, but the head and feet keep facing right; never face the camera, never turn away); identical character scale in every cell; within one row, feet on the same ground line unless the frame is airborne, in which case keep the real jump height inside the cell; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no slash effects, no motion trails, no chains, no dust (effects are added in code), no background objects, no extra characters, no gravestones, no text.

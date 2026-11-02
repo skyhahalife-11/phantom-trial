@@ -1,0 +1,17 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight and momentum. Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 8. Row 1 is getting hit, row 2 is a death collapse.
+
+Row 1, getting hit:
+1. Recoiling backward from a hit to the chest, head snapping back, sword knocked out of guard.
+2. Staggering back on the rear foot, arms flung, coat flying forward.
+3. Catching balance, knees bent, sword dragged low.
+4. Returning to a guarded ready stance.
+
+Row 2, death:
+5. Hit hard, stumbling, dropping to one knee.
+6. Kneeling, leaning on the planted sword to stay up, head down.
+7. Sword slipping, body tipping forward.
+8. Lying face-down on the ground, sword fallen beside him.
+
+Every frame: the SAME character, strict side view facing RIGHT (the body may twist, but the head and feet keep facing right; never face the camera, never turn away); identical character scale in every cell; within one row, feet on the same ground line unless the frame is airborne, in which case keep the real jump height inside the cell; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no slash effects, no motion trails, no chains, no dust (effects are added in code), no background objects, no extra characters, no gravestones, no text.

@@ -1,0 +1,3 @@
+HTTP 200
+saved ../hero2/strips/B_move_1.png Create a single pixel-art sprite sheet, 4 columns by 3 rows, exactly 12 equal-size animation cells, on a completely solid pure chroma green background #00FF00. No grid lines, labels, text, UI, shadows
+usage {"input_tokens": 4569, "input_tokens_details": {"cache_write_tokens": 2020, "cached_tokens": 0}, "output_tokens": 562, "output_tokens_details": {"reasoning_tokens": 16}, "total_tokens": 5131, "cost_usd": 0.016892}
