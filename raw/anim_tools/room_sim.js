@@ -32,9 +32,11 @@ scene.enter();
 const R = sandbox.window.__R;
 const seen = new Set(), stats = { perfect: 0, hurt: 0, hits: 0 };
 let lastBanner = 0, lastHp = 100, kills = 0, dmg = 0, atkFrames = 0, near = 0;
-const hpPrev = new Map();
+const hpPrev = new Map(), cnt = {}, msgs = {};
+let lastSt = '', maxSoul = 0, lastMsg = null, crits = 0;
 const DT = 1 / 60;
-for (let f = 0; f < 60 * 90; f++) {
+const SECS = Number(process.env.SECS) || 90;
+for (let f = 0; f < 60 * SECS; f++) {
   for (const k of Object.keys(sandbox.virt)) delete sandbox.virt[k];
   sandbox.pulse.clear();
   const p = R.p;
@@ -57,13 +59,37 @@ for (let f = 0; f < 60 * 90; f++) {
     if (dy > 30 && p.ground && f % 30 === 0) { sandbox.virt.down = true; sandbox.pulse.add('jump'); }
     if (Math.abs(dx) < 50 && Math.abs(dy) < 30 && f % 5 === 0) sandbox.pulse.add('attack');
     if (!p.ground && Math.abs(dx) < 16 && dy > 10) { sandbox.virt.down = true; sandbox.pulse.add('attack'); }
+    // 技能：常态 掷碑→瞬身→突刺→（断裂中）瞬狱，魂够 3 格变身；变身后碑落/血爪拖行/裂地，血契剩三成时「葬」
+    if (p.cd && f % 6 === 0) {
+      const ahead = (e, r) => (e.x - p.x) * Math.sign(dx || 1) > -6 && Math.abs(e.x - p.x) < r && Math.abs(e.y - p.y) < 24;
+      const live = R.en.filter((e) => e.st !== 'dead');
+      const blade = R.blade;
+      if (p.form === 'normal') {
+        if (p.soul >= 3) sandbox.pulse.add('s4');
+        else if (blade && (blade.phase === 'hover' || (dy < -50 && blade.y < p.y - 60))) sandbox.pulse.add('s2');   // 瞬身过去
+        else if (!blade && p.cd.i <= 0 && dy < -50 && (p.ground ? dy > -110 : p.dj && p.vy > -60)) { sandbox.virt.up = true; sandbox.pulse.add('s2'); }   // 斜上扔，瞬身上高台（太高就先二段跳到顶点再扔）
+        else if (R.witch > 0 && p.cd.o <= 0) sandbox.pulse.add('s3');   // 瞬狱
+        else if (!blade && p.cd.i <= 0 && live.some((e) => ahead(e, 170))) sandbox.pulse.add('s2');
+        else if (p.cd.u <= 0 && live.some((e) => e.st === 'stun' && ahead(e, 160))) sandbox.pulse.add('s1');
+        else if (p.cd.o <= 0 && live.some((e) => ahead(e, 140))) sandbox.pulse.add('s3');
+      } else if (p.form === 'blood') {
+        if (p.pact < p.pactMax * 0.3) sandbox.pulse.add('s4');
+        else if (p.cd.u <= 0 && live.some((e) => e.mark > 0)) sandbox.pulse.add('s1');
+        else if (p.cd.i <= 0 && live.some((e) => ahead(e, 120))) sandbox.pulse.add('s2');
+        else if (p.cd.o <= 0 && live.some((e) => ahead(e, 160))) sandbox.pulse.add('s3');
+      }
+    }
   }
   scene.update(DT);
   for (const e of R.en) { const h = hpPrev.get(e) ?? e.hp; if (e.hp < h) dmg += h - e.hp; hpPrev.set(e, e.hp); }
   if (p.st === 'atk') atkFrames++;
   if (f % 900 === 0) console.log(`t=${f/60}s hero(${p.x|0},${p.y|0}) ${p.st} ground=${p.ground} | target ${tgt ? `(${tgt.x|0},${tgt.y|0}) ${tgt.st}` : '-'} | enemies ${R.en.length}`);
   if (tgt && Math.abs(tgt.x - p.x) < 50 && Math.abs(tgt.y - p.y) < 30) near++;
-  seen.add(p.st);
+  if (p.st !== lastSt) { cnt[p.st] = (cnt[p.st] || 0) + 1; lastSt = p.st; }
+  if (p.soul > maxSoul) maxSoul = p.soul;
+  if (R.msg && R.msg !== lastMsg) { lastMsg = R.msg; msgs[R.msg.text] = (msgs[R.msg.text] || 0) + 1; }
+  for (const n of R.nums) if (n.big && !n.seen) { n.seen = true; crits++; }
+  seen.add(p.st + (p.form === 'blood' ? '(血)' : ''));
   for (const e of R.en) seen.add('hound:' + e.st);
   if (R.banner > lastBanner + 0.5) stats.perfect++;
   lastBanner = R.banner;
@@ -74,3 +100,5 @@ console.log('waves', R.wave, 'kills', R.kills, 'hp', R.p.hp, 'dead', R.dead);
 console.log('damage dealt', dmg, 'frames attacking', atkFrames, 'frames near target', near);
 console.log('perfect dodges', stats.perfect, 'times hurt', stats.hurt);
 console.log('states seen', [...seen].sort().join(' '));
+console.log('state entries', JSON.stringify(cnt));
+console.log('max soul', maxSoul.toFixed(2), 'crits', crits, 'messages', JSON.stringify(msgs));

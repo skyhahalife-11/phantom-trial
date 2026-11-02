@@ -1,0 +1,23 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight and momentum. Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line.
+
+Layout: a 4 columns x 3 rows grid of 12 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 12. Row 1 throws the sword away, row 2 catches it back and lands from a teleport, row 3 is a quick-draw slash.
+
+Row 1, hurling the greatsword like a boomerang (after frame 1 the sword has left his hands; do NOT draw the sword in frames 2, 3 and 4):
+1. Winding up: body twisted far back, both hands gripping the hilt, the greatsword cocked back over the right shoulder.
+2. Hurling: body whipping forward, both arms flung forward and fully extended, hands EMPTY and open.
+3. Follow-through: leaning far forward, arms still extended, hands empty, coat flaring forward.
+4. Recovering into a low ready stance, EMPTY-handed, right hand open and reaching forward, waiting for the sword to return.
+
+Row 2, catching the returning sword, then arriving from a teleport:
+5. Catching: right hand snapping shut on the hilt of the returning greatsword, the blade behind him, knees bending with the impact.
+6. Settling back into the low ready stance, sword in both hands, angled low in front.
+7. Teleport arrival: appearing in a deep low crouch, one knee almost touching the ground, sword swept far back behind him, coat and hair still blown forward.
+8. Rising out of the crouch into the ready stance, sword coming forward.
+
+Row 3, quick-draw slash (iaido style, one blindingly fast horizontal cut):
+9. Low stance, body coiled, the greatsword held horizontally against the left hip like a sheathed blade, right hand on the hilt.
+10. The draw: one explosive horizontal slash, blade swept fully forward at chest height, body lunging forward, rear leg extended.
+11. Follow-through: the blade has passed through and is extended far behind him, body twisted, frozen in the finished cut.
+12. Calmly bringing the blade back to the left hip as if sheathing it, upright, composed.
+
+Every frame: the SAME character, strict side view facing RIGHT (the body may twist, but the head and feet keep facing right; never face the camera, never turn away); identical character scale in every cell; within one row, feet on the same ground line unless the frame is airborne, in which case keep the real jump height inside the cell; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no slash effects, no motion trails, no chains, no dust (effects are added in code), no background objects, no extra characters, no gravestones, no text.

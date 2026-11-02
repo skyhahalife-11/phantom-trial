@@ -40,10 +40,10 @@ function buttons() {
     { id: 'attack', x: ax, y: ay, r: 80 * s, label: '斩', big: true },
     { id: 'dodge', ...at(200), r: 58 * s, label: '闪', accent: '#8fd8ff' },
     { id: 'jump', ...at(58), r: 48 * s, label: '跳' },
-    { id: 's1', ...at(160), r: 42 * s, label: '刺', lock: true },
-    { id: 's2', ...at(132), r: 42 * s, label: '钩', lock: true },
-    { id: 's3', ...at(104), r: 42 * s, label: '掘', lock: true },
-    { id: 's4', x: ax + 20 * s, y: ay - 285 * s, r: 46 * s, label: '葬', lock: true, accent: '#ff6a6a' },
+    { id: 's1', ...at(160), r: 42 * s, label: '刺' },
+    { id: 's2', ...at(132), r: 42 * s, label: '钩' },
+    { id: 's3', ...at(104), r: 42 * s, label: '掘' },
+    { id: 's4', x: ax + 20 * s, y: ay - 285 * s, r: 46 * s, label: '契', accent: '#ff6a6a' },
     { id: 'pause', x: VW - T.safe.r - 46, y: 46, r: 30, label: '返', small: true },
     { id: 'menu', x: VW - T.safe.r - 116, y: 46, r: 30, label: '设', small: true },
   ];
@@ -204,13 +204,19 @@ function draw() {
   // 按键
   const held = new Set([...touches.values()].filter((o) => o.kind === 'btn').map((o) => o.id));
   for (const b of buttons()) {
-    const on = held.has(b.id);
-    ctx.globalAlpha = a * (b.lock ? 0.45 : 1);
+    // 场景提供按键状态时（标签随变身切换、冷却、不可用），以场景为准
+    const st = (scene.btnState && scene.btnState(b.id)) || {};
+    const on = held.has(b.id), r = b.r * (on ? 0.94 : 1);
+    ctx.globalAlpha = a * (st.off ? 0.45 : 1);
     ctx.fillStyle = on ? 'rgba(240,230,250,.45)' : 'rgba(20,16,30,.5)';
     ctx.strokeStyle = b.accent || 'rgba(240,230,250,.6)';
-    ctx.beginPath(); ctx.arc(b.x, b.y, b.r * (on ? 0.94 : 1), 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    ctx.beginPath(); ctx.arc(b.x, b.y, r, 0, Math.PI * 2); ctx.fill(); ctx.stroke();
+    if (st.cd > 0) {   // 冷却：顺时针收拢的暗色扇形
+      ctx.fillStyle = 'rgba(8,6,14,.65)';
+      ctx.beginPath(); ctx.moveTo(b.x, b.y); ctx.arc(b.x, b.y, r, -Math.PI / 2, -Math.PI / 2 + Math.PI * 2 * st.cd); ctx.closePath(); ctx.fill();
+    }
     const fs = b.big ? 48 : b.small ? 24 : 36;
-    drawText(b.label, b.x, b.y + fs * 0.36, fs, b.accent || '#f0e6f6', 'center');
+    drawText(st.label || b.label, b.x, b.y + fs * 0.36, fs, b.accent || '#f0e6f6', 'center');
   }
   ctx.restore();
   if (T.menu) drawMenu();

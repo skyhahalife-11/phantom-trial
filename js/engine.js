@@ -39,7 +39,7 @@ function preload(list) {
 }
 
 const KEYMAP = {
-  left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], down: ['KeyS', 'ArrowDown'], attack: ['KeyJ'],
+  left: ['KeyA', 'ArrowLeft'], right: ['KeyD', 'ArrowRight'], down: ['KeyS', 'ArrowDown'], up: ['KeyW', 'ArrowUp'], attack: ['KeyJ'],
   jump: ['KeyK', 'KeyW', 'ArrowUp'], dodge: ['Space', 'ShiftLeft', 'ShiftRight'],
   s1: ['KeyU', 'Digit1'], s2: ['KeyI', 'Digit2'], s3: ['KeyO', 'Digit3'], s4: ['KeyP', 'Digit4'],
   pause: ['Escape'], confirm: ['Enter'], restart: ['KeyR'],

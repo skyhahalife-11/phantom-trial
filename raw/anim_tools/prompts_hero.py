@@ -112,6 +112,26 @@ Row 3, upward ground heave (he wrenches the sword up out of the ground, launchin
 11. Impact: heaving the sword violently upward out of the ground in front, body rising.
 12. Sword raised high above the head, body stretched upward on the toes.
 """),
+    # v0.3.1：锁魂钩、掘墓换成掷碑·瞬身、断空。飞出去的剑由代码画，所以扔出后的帧里手上不画剑
+    'J_throw_iai': sheet(4, 3, "Row 1 throws the sword away, row 2 catches it back and lands from a teleport, row 3 is a quick-draw slash.", """
+Row 1, hurling the greatsword like a boomerang (after frame 1 the sword has left his hands; do NOT draw the sword in frames 2, 3 and 4):
+1. Winding up: body twisted far back, both hands gripping the hilt, the greatsword cocked back over the right shoulder.
+2. Hurling: body whipping forward, both arms flung forward and fully extended, hands EMPTY and open.
+3. Follow-through: leaning far forward, arms still extended, hands empty, coat flaring forward.
+4. Recovering into a low ready stance, EMPTY-handed, right hand open and reaching forward, waiting for the sword to return.
+
+Row 2, catching the returning sword, then arriving from a teleport:
+5. Catching: right hand snapping shut on the hilt of the returning greatsword, the blade behind him, knees bending with the impact.
+6. Settling back into the low ready stance, sword in both hands, angled low in front.
+7. Teleport arrival: appearing in a deep low crouch, one knee almost touching the ground, sword swept far back behind him, coat and hair still blown forward.
+8. Rising out of the crouch into the ready stance, sword coming forward.
+
+Row 3, quick-draw slash (iaido style, one blindingly fast horizontal cut):
+9. Low stance, body coiled, the greatsword held horizontally against the left hip like a sheathed blade, right hand on the hilt.
+10. The draw: one explosive horizontal slash, blade swept fully forward at chest height, body lunging forward, rear leg extended.
+11. Follow-through: the blade has passed through and is extended far behind him, body twisted, frozen in the finished cut.
+12. Calmly bringing the blade back to the left hip as if sheathing it, upright, composed.
+"""),
 }
 
 DESIGN_TRANSFORMED = (
