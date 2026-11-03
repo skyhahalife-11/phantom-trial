@@ -33,7 +33,7 @@ const R = sandbox.window.__R;
 const seen = new Set(), stats = { perfect: 0, hurt: 0, hits: 0 };
 let lastBanner = 0, lastHp = 100, kills = 0, dmg = 0, atkFrames = 0, near = 0;
 const hpPrev = new Map(), cnt = {}, msgs = {};
-let lastSt = '', maxSoul = 0, lastMsg = null, crits = 0;
+let lastSt = '', maxSoul = 0, lastMsg = null, crits = 0, rageKills = 0, rageFrames = 0, killsPrev = 0;
 const DT = 1 / 60;
 const SECS = Number(process.env.SECS) || 90;
 for (let f = 0; f < 60 * SECS; f++) {
@@ -72,11 +72,12 @@ for (let f = 0; f < 60 * SECS; f++) {
         else if (!blade && p.cd.i <= 0 && live.some((e) => ahead(e, 170))) sandbox.pulse.add('s2');
         else if (p.cd.u <= 0 && live.some((e) => e.st === 'stun' && ahead(e, 160))) sandbox.pulse.add('s1');
         else if (p.cd.o <= 0 && live.some((e) => ahead(e, 140))) sandbox.pulse.add('s3');
-      } else if (p.form === 'blood') {
-        if (p.pact < p.pactMax * 0.3) sandbox.pulse.add('s4');
-        else if (p.cd.u <= 0 && live.some((e) => e.mark > 0)) sandbox.pulse.add('s1');
-        else if (p.cd.i <= 0 && live.some((e) => ahead(e, 120))) sandbox.pulse.add('s2');
-        else if (p.cd.o <= 0 && live.some((e) => ahead(e, 160))) sandbox.pulse.add('s3');
+      } else if (p.form === 'blood') {   // 暴走：血狱 → 碑雨 → 血爪乱舞，其余时间血影闪追怪、普攻甩刀气
+        if (p.cd.o <= 0 && live.some((e) => Math.abs(e.x - p.x) < 300)) sandbox.pulse.add('s3');
+        else if (p.cd.u <= 0 && live.some((e) => Math.abs(e.x - p.x) < 300)) sandbox.pulse.add('s1');
+        else if (p.cd.i <= 0 && live.some((e) => ahead(e, 90))) sandbox.pulse.add('s2');
+        else if (Math.abs(dx) > 120 && Math.abs(dy) < 30) sandbox.pulse.add('dodge');
+        else sandbox.pulse.add('attack');
       }
     }
   }
@@ -87,6 +88,8 @@ for (let f = 0; f < 60 * SECS; f++) {
   if (tgt && Math.abs(tgt.x - p.x) < 50 && Math.abs(tgt.y - p.y) < 30) near++;
   if (p.st !== lastSt) { cnt[p.st] = (cnt[p.st] || 0) + 1; lastSt = p.st; }
   if (p.soul > maxSoul) maxSoul = p.soul;
+  if (p.form === 'blood') { rageFrames++; rageKills += R.kills - killsPrev; }
+  killsPrev = R.kills;
   if (R.msg && R.msg !== lastMsg) { lastMsg = R.msg; msgs[R.msg.text] = (msgs[R.msg.text] || 0) + 1; }
   for (const n of R.nums) if (n.big && !n.seen) { n.seen = true; crits++; }
   seen.add(p.st + (p.form === 'blood' ? '(血)' : ''));
@@ -100,5 +103,6 @@ console.log('waves', R.wave, 'kills', R.kills, 'hp', R.p.hp, 'dead', R.dead);
 console.log('damage dealt', dmg, 'frames attacking', atkFrames, 'frames near target', near);
 console.log('perfect dodges', stats.perfect, 'times hurt', stats.hurt);
 console.log('states seen', [...seen].sort().join(' '));
+console.log('rage kills', rageKills, 'rage seconds', (rageFrames / 60).toFixed(1));
 console.log('state entries', JSON.stringify(cnt));
 console.log('max soul', maxSoul.toFixed(2), 'crits', crits, 'messages', JSON.stringify(msgs));

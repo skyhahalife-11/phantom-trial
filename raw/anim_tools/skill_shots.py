@@ -5,6 +5,7 @@ import websocket
 
 BASE, OUT = sys.argv[1], sys.argv[2]
 PHONE = len(sys.argv) > 3 and sys.argv[3] == 'phone'
+import sys as _s
 os.makedirs(OUT, exist_ok=True)
 CHROME = r'C:\Program Files\Google\Chrome\Application\chrome.exe'
 prof = tempfile.mkdtemp(prefix='skillshot_')
@@ -62,6 +63,18 @@ try:
     press = lambda k: js(f"pulse.add('{k}')")
 
     reset_cd = "window.__R.p.cd = { u: 0, i: 0, o: 0 }"
+    if len(sys.argv) > 4 and sys.argv[4] == 'transform':   # 变身切入、暴走技能、葬
+        js("window.__R.p.soul = 5")
+        press('s4')
+        for k, t in enumerate([0.08, 0.3, 0.5, 0.45, 0.15]): time.sleep(t); shot(f'c_{k}')
+        js(SETUP.replace("R.p.soul = 3.5", "R.p.soul = 0")); js("window.__R.p.form = 'blood'; window.__R.p.rage = window.__R.p.rageMax = 30; window.__R.p.cd = {u:0,i:0,o:0}")
+        press('attack'); time.sleep(0.2); shot('r_wave')
+        time.sleep(0.3); press('s1'); time.sleep(0.6); shot('r_rain')
+        time.sleep(1.2); js(SETUP.replace("R.p.soul = 3.5", "R.p.soul = 0").replace("stunT: 99, flash: 0", "stunT: 99, hp: 900, flash: 0")); js("window.__R.p.form = 'blood'; window.__R.p.rage = 30")
+        press('s2'); time.sleep(0.3); shot('r_maul')
+        time.sleep(0.6); press('s3'); time.sleep(0.15); shot('r_storm'); time.sleep(0.3); shot('r_storm2')
+        time.sleep(0.6); js("window.__R.p.rage = 0.05"); time.sleep(0.4); shot('r_fin')
+        print(chr(10).join(logs) or 'no errors'); sys.exit(0)
     press('s2'); time.sleep(0.2); shot('1_throw')
     time.sleep(0.15)
     press('s2'); time.sleep(0.05); shot('2_blink')

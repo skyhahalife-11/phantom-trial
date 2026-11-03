@@ -1,0 +1,5 @@
+Pixel art character cut-in portrait for a 2D action game super move, in the same pixel art style and the same character as the reference image (his TRANSFORMED demonic form).
+
+Composition: a wide cinematic extreme close-up of his face, framed from the eyebrows to the chin, filling the whole width of the image, three-quarter view turned toward the RIGHT. White shoulder-length hair falling across the forehead, sharp handsome features, a fierce cold expression, both eyes glowing bright crimson with red light streaking out of the eyes to the right, a thin trickle of blood-red cracks creeping up the right side of the neck and jaw, part of the swollen crimson clawed right hand raised near the chin. Strong dramatic lighting from below in red, deep shadows on the other half of the face.
+
+Crisp pixel art with visible hard-edged pixels, limited palette of about 32 colors (pale skin, white hair, deep wine-red, crimson, black), no anti-aliasing, no text, no logo, no frame or border. Background: solid pure green (#00FF00) everywhere outside the character.

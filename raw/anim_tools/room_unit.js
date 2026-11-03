@@ -45,7 +45,7 @@ function step(sec, press) {
     scene.update(1 / 60);
   }
 }
-function toBlood(r, pact = 60) { r.p.form = 'blood'; r.p.pact = r.p.pactMax = pact; }
+function toBlood(r, sec = 10) { r.p.form = 'blood'; r.p.rage = r.p.rageMax = sec; r.rcombo = 0; }
 
 // 1 掷碑：剑飞出去打中敌人并钉住，飞回手里后才开始冷却
 {
@@ -110,50 +110,70 @@ function toBlood(r, pact = 60) { r.p.form = 'blood'; r.p.pact = r.p.pactMax = pa
   check('瞬狱后断裂结束', r.witch <= 0.3, `剩 ${r.witch.toFixed(2)}`);
   check('瞬狱后回到可操作状态', ['idle', 'fall', 'sheathe', 'land'].includes(r.p.st), r.p.st);
 }
-// 7 血爪拖行：冲过去铲起敌人，冲完甩向身后上方
-{
-  const r = fresh(); toBlood(r);
-  const e = hound(250);
-  const x0 = r.p.x;
-  step(0.2, 's2');
-  check('拖行 铲起敌人', e.st === 'carried', e.st);
-  step(0.3);
-  check('拖行 冲出一段距离', r.p.x - x0 > 100, `位移 ${(r.p.x - x0).toFixed(0)}`);
-  check('拖行 甩向身后上方', e.st === 'air' && e.vx < 0 && 60 - e.hp === 26, `st ${e.st} vx ${e.vx} 掉 ${60 - e.hp}`);
-}
-// 8 裂地：地裂往前连爆三下
-{
-  const r = fresh(); toBlood(r);
-  const es = [hound(250), hound(298), hound(346)];
-  step(0.7, 's3');
-  check('裂地 三处都被挑飞', es.every((e) => e.hp < 60), es.map((e) => 60 - e.hp).join(' / '));
-}
-// 9 碑落：带墓志的敌人挨砸、墓志消失；眩晕中的目标伤害翻倍
-{
-  const r = fresh(); toBlood(r);
-  const a = hound(300, { mark: 5, st: 'stun', stunT: 9 }), b = hound(400, { mark: 5 });
-  step(0.5, 's1');
-  check('碑落 命中带墓志的敌人', a.hp < 60 && b.hp < 60, `a ${a.hp} b ${b.hp}`);
-  check('碑落 结算后墓志消失', a.mark === 0 && b.mark === 0);
-  check('碑落 眩晕目标伤害 ×2', 60 - a.hp === 2 * (60 - b.hp), `a 掉 ${60 - a.hp} b 掉 ${60 - b.hp}`);
-}
-// 10 碑守：变身后挥砍时正面被扑，挡下并反震
+// 7 暴走真正无敌：被扑中不掉血、不被打断
 {
   const r = fresh(); toBlood(r);
   hound(240, { st: 'windup', t: 0.54, face: -1 });
-  step(0.02, 'attack');
-  const before = r.p.pact;
-  step(0.3);
-  check('碑守 挥砍时正面挡下', r.p.pact > before - 2 && r.p.hp === 100, `血契 ${before.toFixed(1)} → ${r.p.pact.toFixed(1)}`);
+  step(0.5);
+  check('暴走 被扑不掉血', r.p.hp === 100 && r.p.st !== 'hurt', `hp ${r.p.hp} st ${r.p.st}`);
 }
-// 11 血契被打空：碑碎，回常态并硬直 1 秒，本体生命不变
+// 8 普攻刀气：远处的敌人也挨到
+{
+  const r = fresh(); toBlood(r);
+  const far = dummy(380);
+  step(0.5, 'attack');
+  check('刀气 打到远处敌人', far.hp < 600, `掉 ${600 - far.hp}`);
+}
+// 9 血影闪：几乎无冷却，路径上的敌人挨刀
+{
+  const r = fresh(); toBlood(r);
+  const e = dummy(260); const x0 = r.p.x;
+  step(0.2, 'dodge');
+  check('血影闪 位移并砍中路径敌人', r.p.x - x0 > 100 && e.hp < 600, `位移 ${(r.p.x - x0).toFixed(0)} 掉 ${600 - e.hp}`);
+  step(0.05, 'dodge');
+  check('血影闪 马上能再闪', r.p.st === 'rdash', r.p.st);
+}
+// 10 碑雨：全屏墓碑砸下
+{
+  const r = fresh(); toBlood(r);
+  const es = [dummy(260), dummy(420), dummy(560)];
+  step(2.0, 's1');
+  check('碑雨 屏幕内敌人都挨砸', es.every((e) => e.hp < 600), es.map((e) => 600 - e.hp).join(' / '));
+}
+// 11 血爪乱舞：抓一只来回砸 4 下（波及旁边的），最后甩飞
+{
+  const r = fresh(); toBlood(r);
+  const e = hound(250, { hp: 300 }), side = hound(300, { hp: 300 });
+  step(0.9, 's2');
+  check('血爪乱舞 抓住的敌人挨 5 下以上', 300 - e.hp >= 14 * 5, `掉 ${300 - e.hp}`);
+  check('血爪乱舞 波及旁边的敌人', side.hp < 300, `掉 ${300 - side.hp}`);
+  check('血爪乱舞 结束后甩飞', e.st === 'air' || e.st === 'stun', e.st);
+}
+// 12b 血狱：暴走中随时能放，不需要时空断裂
+{
+  const r = fresh(); toBlood(r);
+  const es = [dummy(260), dummy(380)];
+  step(0.05, 's3');
+  check('血狱 不需要断裂也能放', r.p.st === 'storm', r.p.st);
+  step(1.0);
+  check('血狱 每只挨 3 道', es.every((e) => 600 - e.hp >= 54), es.map((e) => 600 - e.hp).join(' / '));
+}
+// 12c 时间到自动「葬」：全屏伤害按连击数加成，之后回常态
+{
+  const r = fresh(); toBlood(r, 0.3);
+  const e = dummy(500);
+  r.rcombo = 20;
+  step(1.2);
+  check('时间到自动葬并回常态', r.p.form === 'normal', r.p.form);
+  check('葬 全屏伤害含连击加成', 600 - e.hp >= 30 + 20 * 1.5, `掉 ${600 - e.hp}`);
+}
+// 12d 暴走中击杀加时；敌人半速
 {
   const r = fresh(); toBlood(r, 5);
-  r.p.face = -1;   // 背对狗，不触发格挡
-  hound(240, { st: 'windup', t: 0.54, face: -1 });
-  step(0.4);
-  check('血契打空 → 碑碎硬直', r.p.form === 'normal' && r.p.st === 'tbreak', `form ${r.p.form} st ${r.p.st}`);
-  check('变身中挨打不扣本体生命', r.p.hp === 100, `hp ${r.p.hp}`);
+  r.p.rage = 3;
+  const e = hound(250, { hp: 1 });
+  step(0.3, 'attack');
+  check('击杀 +0.5 秒', e.st === 'dead' || !r.en.includes(e) ? r.p.rage > 3 - 0.3 + 0.4 : false, `剩 ${r.p.rage.toFixed(2)}`);
 }
 // 12 突刺对被钉住的敌人必定暴击；穿过的敌人刻墓志
 {
@@ -165,13 +185,25 @@ function toBlood(r, pact = 60) { r.p.form = 'blood'; r.p.pact = r.p.pactMax = pa
   check('突刺 对钉住的敌人暴击', hp0 - e.hp === 36, `掉 ${hp0 - e.hp}`);
   check('突刺 刻墓志', e.mark > 0);
 }
-// 13 魂：不足 2 格不能变身；变身吞掉全部魂换血契
+// 12e 突刺 → 普攻：穿过敌人停在身后、回身，突刺中途按的攻击排队，结束立刻接上普攻并砍中
 {
   const r = fresh();
-  r.p.soul = 1.5; step(0.05, 's4');
+  const e = dummy(300);
+  step(0.08, 's1');
+  step(0.04, 'attack');   // 突刺途中按攻击
+  const hp1 = e.hp;
+  step(0.3);
+  check('突刺停在敌人身后（没冲满 200）', r.p.x > 300 && r.p.x < 360, `主角 x ${r.p.x.toFixed(0)}`);
+  check('突刺后回身面向敌人', r.p.face === -1, `face ${r.p.face}`);
+  check('排队的普攻接上并砍中', r.p.st === 'atk' || e.hp < hp1, `st ${r.p.st} 掉 ${hp1 - e.hp}`);
+}
+// 13 魂：不足 3 格不能变身；变身吞掉全部魂换暴走时长
+{
+  const r = fresh();
+  r.p.soul = 2.5; step(0.05, 's4');
   check('魂不足不能变身', r.p.st !== 'transform' && r.p.form === 'normal');
   r.p.soul = 4; step(0.05, 's4');
-  check('变身吞掉全部魂', r.p.soul === 0 && Math.abs(r.p.pactMax - 60) < 0.01, `血契上限 ${r.p.pactMax}`);
+  check('变身吞掉全部魂', r.p.soul === 0 && Math.abs(r.p.rageMax - 10) < 0.01, `暴走 ${r.p.rageMax} 秒`);
   step(0.8);
   check('变身完成', r.p.form === 'blood');
 }
