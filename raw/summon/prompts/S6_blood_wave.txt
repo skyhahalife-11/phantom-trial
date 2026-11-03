@@ -1,0 +1,7 @@
+Pixel art sprite sheet for a 2D side-scrolling action game. Subject: a blood crescent sword wave fired by the transformed hero in the reference image with each basic attack: a vertical crescent moon-shaped blade of crimson energy, curved toward the RIGHT (convex side facing right, it flies right), with a hot pink-white inner edge, a dark crimson outer edge, small black stone fragments and blood droplets trailing behind it to the left. About as tall as the hero.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells. Read left to right, top to bottom as frames 1 to 8.
+Row 1, flight loop: 1. crescent just formed, thin and bright. 2. crescent at full size, trail streaming left. 3. full size, trail flickering, droplets. 4. full size, slightly different trail shape.
+Row 2, hit and fade: 5. crescent hitting something: splitting into a burst of blood splashes and red sparks in a starburst. 6. burst expanding, droplets flying. 7. droplets falling and thinning. 8. last few droplets fading.
+
+Every frame: strict side view facing RIGHT; identical scale in every cell; whole subject inside its cell with margin. Crisp pixel art in the same style and palette as the reference image (dark gothic, wine red, crimson, black, bone grey, small gold accents), limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no soft glow gradients, no grid lines, no text, no numbers, no background objects, no ground, no hero character. Background: solid pure green (#00FF00) everywhere outside the subject.

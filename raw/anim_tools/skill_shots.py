@@ -34,7 +34,7 @@ try:
     def js(expr):
         r = cmd('Runtime.evaluate', expression=expr, returnByValue=True)
         if r.get('exceptionDetails'):
-            logs.append('EVAL ' + json.dumps(r['exceptionDetails'])[:300])
+            logs.append('EVAL ' + json.dumps(r['exceptionDetails'])[:900])
         return r.get('result', {}).get('value')
 
     def shot(name):
@@ -48,7 +48,10 @@ try:
     else:
         cmd('Emulation.setDeviceMetricsOverride', width=1280, height=720, deviceScaleFactor=1, mobile=False)
     cmd('Page.navigate', url=BASE + '?room2=1&dbg=1')
-    time.sleep(2.5)
+    for _ in range(40):   # 素材预载完、场景进入后才有 __R
+        time.sleep(0.25)
+        if js('!!(window.__R && window.__R.p)'): break
+    time.sleep(0.5)
     if PHONE:
         cmd('Input.dispatchTouchEvent', type='touchStart', touchPoints=[{'x': 500, 'y': 200}])
         cmd('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])

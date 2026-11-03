@@ -1,0 +1,7 @@
+Pixel art sprite sheet for a 2D side-scrolling action game. Subject: "Blood Prison", a trap that erupts under an enemy's feet: crimson blood thorns and black rusted chains burst from the ground and skewer and bind the target, matching the dark gothic style of the reference image. The bottom of each cell is the ground line; the effect is centered horizontally, about as tall as a human.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells. Read left to right, top to bottom as frames 1 to 8.
+Row 1: 1. a crimson rune circle glowing on the ground. 2. sharp blood thorns shooting up from the circle, black chains whipping up. 3. a full cage of tall crimson thorns crossing each other, chains wrapped around them in an X, at full height. 4. the thorn cage pulsing, red sparks.
+Row 2: 5. a bright red-white slash cutting diagonally across the cage. 6. the thorns shattering into blood shards, chains snapping. 7. shards falling, crimson mist. 8. last drops and fading rune circle.
+
+Every frame: strict side view facing RIGHT; identical scale in every cell; whole subject inside its cell with margin. Crisp pixel art in the same style and palette as the reference image (dark gothic, wine red, crimson, black, bone grey, small gold accents), limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no soft glow gradients, no grid lines, no text, no numbers, no background objects, no ground, no hero character. Background: solid pure green (#00FF00) everywhere outside the subject.

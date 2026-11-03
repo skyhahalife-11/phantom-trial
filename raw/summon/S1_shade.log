@@ -1,0 +1,3 @@
+HTTP 200
+saved ../summon/S1_shade_1.png Create a single clean pixel-art sprite sheet, 4 columns x 3 rows, containing 12 equal-sized animation cells with NO visible grid lines, labels, numbers, text, or borders. Solid exact chroma green back
+usage {"input_tokens": 5186, "input_tokens_details": {"cache_write_tokens": 2509, "cached_tokens": 0}, "output_tokens": 690, "output_tokens_details": {"reasoning_tokens": 0}, "total_tokens": 5876, "cost_usd": 0.0199065}

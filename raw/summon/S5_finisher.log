@@ -1,0 +1,3 @@
+HTTP 200
+saved ../summon/S5_finisher_1.png Create a single pixel-art sprite sheet, exactly 4 columns x 2 rows, containing 8 equal animation cells with NO divider/grid lines. Transparent-looking chroma background must instead be solid pure #00F
+usage {"input_tokens": 5157, "input_tokens_details": {"cache_write_tokens": 2524, "cached_tokens": 0}, "output_tokens": 646, "output_tokens_details": {"reasoning_tokens": 28}, "total_tokens": 5803, "cost_usd": 0.019328}

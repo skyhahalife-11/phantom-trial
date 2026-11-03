@@ -96,7 +96,7 @@ function rReset() {
     form: 'normal', rage: 0, rageMax: 1, hitSet: null, aimUp: false, storm: null, maul: null,
   };
   R.cam = { x: 0, y: ROOM.h - RB_H };
-  R.en = []; R.fx = []; R.nums = []; R.cuts = []; R.blade = null; R.shots = []; R.drops = []; R.rain = null; R.rcombo = 0;
+  R.en = []; R.fx = []; R.nums = []; R.cuts = []; R.blade = null; R.shots = []; R.drops = []; R.rain = null; R.rcombo = 0; R.shade = null;
   R.wave = 0; R.kills = 0; R.waveT = 1.2;
   R.stop = 0; R.shake = 0; R.witch = Number(params.get('witch')) || 0; R.banner = 0;   // witch=秒：调试用，开局直接进时空断裂
   R.msg = null; R.cutin = null; R.soulWarn = 0; R.flash = 0; R.afterT = 0;
@@ -168,7 +168,48 @@ function autoFace(p, dir) {
 function say(text, color = '#f0e6f6') { R.msg = { text, color, t: 1.2 }; }
 function vfx(name, x, y, o = {}) {
   const m = VFX[name];
-  R.fx.push({ k: 'spr', name, x, y, t: 0, life: m ? (m.n - (m.s || 0)) / m.fps : 0.5, ...o });
+  const f = { k: 'spr', name, x, y, t: 0, life: m ? (m.n - (m.s || 0)) / m.fps : 0.5, ...o };
+  if (o.hold) f.life = 3;   // 循环到 releaseFx 为止；忘了放开也最多留 3 秒
+  R.fx.push(f);
+  return f;
+}
+function releaseFx(f) {
+  if (!f || f.rel !== undefined) return;
+  const m = VFX[f.name];
+  f.rel = f.t; f.life = m ? f.t + (m.n - f.hold[1] - 1) / m.fps : f.t;
+}
+/* ---------- 血契之影：暴走期间常驻主角身后的死神，主角普攻时跟着挥爪 ---------- */
+const SHADE = { dx: -34, follow: 10, bob: 2, alpha: 0.9 };
+function summonShade(p) {
+  R.shade = { st: 'shade_in', t: 0, x: p.x + SHADE.dx * p.face, y: p.y, face: p.face };
+}
+function shadeAct(name) {
+  if (R.shade && R.shade.st !== 'shade_in') { R.shade.st = name; R.shade.t = 0; }
+}
+function updateShade(p, dt) {
+  const s = R.shade;
+  if (!s) return;
+  s.t += dt;
+  if (s.st !== 'shade_swipe') s.face = p.face;   // 挥爪途中不转身
+  const k = 1 - Math.exp(-SHADE.follow * dt);
+  s.x += (p.x + SHADE.dx * s.face - s.x) * k;
+  s.y += (p.y - s.y) * k;
+  const m = VFX[s.st];
+  if (s.st === 'shade_out') { if (s.t >= 0.3) R.shade = null; return; }
+  if (s.st !== 'shade_idle' && m && s.t >= m.n / m.fps) { s.st = 'shade_idle'; s.t = 0; }
+}
+function drawShade(cx, cy) {
+  const s = R.shade;
+  if (!s) return;
+  const m = VFX[s.st], im = rImg(`vfx/${s.st}.png`);
+  if (!m || !ready(im)) return;
+  const i = s.st === 'shade_idle' ? Math.floor(s.t * m.fps) % m.n : Math.min(m.n - 1, Math.floor(s.t * m.fps));
+  rx.save();
+  rx.translate(Math.round(s.x - cx), Math.round(s.y - cy + Math.sin(R.time * 3) * SHADE.bob));
+  if (s.face < 0) rx.scale(-1, 1);
+  rx.globalAlpha = s.st === 'shade_out' ? SHADE.alpha * (1 - s.t / 0.3) : SHADE.alpha;
+  rx.drawImage(im, i * m.fw, 0, m.fw, m.fh, -m.ax, -m.ay, m.fw, m.fh);
+  rx.restore();
 }
 const tint = () => (R.p.form === 'blood' ? 'blood' : 'soul');
 const PART_COL = {
@@ -231,7 +272,7 @@ function playerUpdate(p, dt) {
   // 暴走倒计时，到点自动「葬」收尾
   if (blood && !['tfinish', 'storm'].includes(p.st)) {
     p.rage -= dt;
-    if (p.rage <= 0) { p.rage = 0; endMaul(p); setSt(p, 'tfinish'); }
+    if (p.rage <= 0) { p.rage = 0; startFinisher(p); }
   }
 
   const busy = ['atk', 'airatk', 'runatk', 'land', 'plunge'].includes(p.st) || LOCK.includes(p.st);
@@ -374,8 +415,8 @@ function playerUpdate(p, dt) {
       break;
     case 'tfinish':
       p.vx = 0; p.vy = Math.min(p.vy, 0);
-      if (!p.hitDone && p.t >= 2 / T_FPS) { p.hitDone = true; doFinisher(p); }
-      if (p.t >= 4 / T_FPS + 0.35) { p.form = 'normal'; p.rage = 0; p.inv = 0.6; p.cd = { u: 0, i: 0, o: 0 }; setSt(p, 'idle'); }
+      if (!p.hitDone && p.t >= FIN.hitT) { p.hitDone = true; doFinisher(p); }
+      if (p.t >= FIN.hitT + FIN.after) { p.form = 'normal'; p.rage = 0; p.inv = 0.6; p.cd = { u: 0, i: 0, o: 0 }; setSt(p, 'idle'); }
       break;
     default: {
       // 自由移动：idle / run / jump / djump / fall
@@ -426,7 +467,7 @@ function castSkills(p, dir, blood) {
   if (ready('s1', 'u')) { use(p, 's1'); p.cd.u = CD_RAGE.u; if (dir) p.face = dir; setSt(p, 'train'); }   // U 碑雨
   else if (ready('s2', 'i')) { use(p, 's2'); p.cd.i = CD_RAGE.i; if (dir) p.face = dir; startMaul(p); }   // I 血爪乱舞
   else if (ready('s3', 'o')) { use(p, 's3'); if (startStorm(p, true)) p.cd.o = CD_RAGE.o; }   // O 血狱：随时能放
-  else if (want(p, 's4')) { use(p, 's4'); endMaul(p); setSt(p, 'tfinish'); }   // P 提前收尾
+  else if (want(p, 's4')) { use(p, 's4'); startFinisher(p); }   // P 提前收尾
 }
 
 function phys(p, dt) {
@@ -466,6 +507,7 @@ function doHit(p, kind) {
   const arc = ARC[kind === 'run' ? 'c1' : kind];
   if (arc) R.fx.push({ k: 'arc', x: p.x, y: p.y, face: p.face, arc, r: red ? 52 : 40, red, t: 0 });
   if (kind === 'run') R.fx.push({ k: 'streak', x: p.x, y: p.y - 22, face: p.face, t: 0 });
+  if (red) shadeAct('shade_swipe');
   if (red) R.shots.push({ x: p.x + p.face * 24, y: p.y - 22, vx: p.face * TSK.waveV, t: 0, hit: new Set(), big: kind === 'tc2' });
   let n = 0;
   for (const e of alive()) {
@@ -598,7 +640,7 @@ function startStorm(p, red = false) {
   const list = alive().filter((e) => onScreen(p, e)).sort((a, b) => a.x - b.x).slice(0, SK.o.stormMax);
   if (!list.length) return false;
   if (Math.abs(list[list.length - 1].x - p.x) < Math.abs(list[0].x - p.x)) list.reverse();   // 从近的一端开始
-  p.storm = { list, i: 0, t: 0, red };
+  p.storm = { list, i: 0, t: 0, red, cages: [] };
   setSt(p, 'storm'); p.inv = 9; p.vx = 0; p.vy = 0;
   if (R.blade) R.blade = null;
   R.flash = 0.12; if (red) R.flashCol = '255,60,70';
@@ -614,6 +656,7 @@ function updateStorm(p, dt) {
     afterImage(p);
     R.fx.push({ k: 'line', x: p.x, y: p.y - 20, x1: nx, y1: e.y - 20, t: 0 });
     p.x = nx; p.y = e.y; p.face = sign(e.x - p.x) || p.face;
+    if (s.red) s.cages.push(vfx('prison', e.x, e.y, { ground: true, hold: [2, 3] }));   // 血狱：脚下炸出血棘牢笼，收刀时一起斩碎
     for (let k = 0; k < SK.o.stormCuts; k++) {
       const c = cutOn(e, 0, s.red ? TSK.stormDmg : SK.o.stormDmg, true);
       c.big = k === SK.o.stormCuts - 1;   // 每只敌人最后一道带大爆炸
@@ -626,6 +669,7 @@ function updateStorm(p, dt) {
     // 收刀：全部斩痕依次爆开
     let k = 0;
     for (const c of R.cuts) if (c.wait) { c.wait = false; c.t = 0; c.delay = 0.1 + (k++ % SK.o.stormCuts) * 0.06; }
+    s.cages.forEach(releaseFx);
     p.inv = p.form === 'blood' ? p.inv : 0.4; p.storm = null;
     R.witch = Math.min(R.witch, 0.3); R.stop = 0.08; R.shake = 5;
     buzz(80);
@@ -637,7 +681,7 @@ function updateStorm(p, dt) {
 /* ---------- 变身 ---------- */
 // 变身瞬间的冲击波：屏幕内所有敌人挨一下并被掀飞，带墓志的额外翻倍
 function transformWave(p) {
-  R.fx.push({ k: 'wave', x: p.x, y: p.y - 20, t: 0 });
+  summonShade(p);
   burst(p.x, p.y - 20, 70, { up: 120, v1: 260 });
   vfx('exp2_blood', p.x, p.y - 24);
   R.flash = 0.12; R.flashCol = '255,60,70';
@@ -655,6 +699,7 @@ function updateShots(dt) {
     for (const e of alive()) {
       if (s2.hit.has(e) || !overlap(box, eBox(e))) continue;
       s2.hit.add(e);
+      vfx('wave_hit', e.x, e.y - 16, { flip: s2.vx < 0 });
       strike(e, TSK.waveDmg * (s2.big ? 1.5 : 1), { kb: sign(s2.vx) * 60 });
     }
   }
@@ -683,7 +728,7 @@ function updateRain(dt) {
       if (r.k % 2 && tg.length) { const e = tg[Math.floor(Math.random() * tg.length)]; x = e.x + rnd(-10, 10); y = e.y; }
       else { x = R.cam.x + rnd(20, RB_W - 20); y = ROOM.ground; }
       R.drops.push({ x, y, t: 0 });
-      R.fx.push({ k: 'drop', x, y, t: 0 });
+      R.fx.push({ k: 'drop', x, y, t: 0, v: r.k % 3 });
     }
     if (r.t >= TSK.rainT) R.rain = null;
   }
@@ -691,9 +736,12 @@ function updateRain(dt) {
     d.t += dt;
     if (d.done || d.t < 0.1) continue;   // 墓碑落地那一刻才结算
     d.done = true;
-    vfx('exp6_blood', d.x, d.y - 14);
+    vfx('grave_break', d.x, d.y, { ground: true, delay: 0.1 });   // 插地 0.1 秒后碎开
+    burst(d.x, d.y - 4, 6, { col: 'stone', a0: Math.PI, a1: Math.PI * 2, v1: 120 });
     const box = { x0: d.x - 14, x1: d.x + 14, y0: d.y - 34, y1: d.y + 4 };
-    for (const e of alive()) if (overlap(box, eBox(e))) strike(e, TSK.rainDmg, { launch: -160 });
+    let n = 0;
+    for (const e of alive()) if (overlap(box, eBox(e))) { strike(e, TSK.rainDmg, { launch: -160 }); n++; }
+    if (n) vfx('grave_hands', d.x, d.y, { ground: true });   // 砸中了，地里伸出亡魂手
     R.shake = Math.max(R.shake, 1.5);
   }
   R.drops = R.drops.filter((d) => !d.done);
@@ -706,7 +754,10 @@ function startMaul(p) {
   setSt(p, 'tmaul'); p.vx = 0;
   p.maul = e ? { e, i: 0, t: 0 } : null;
   if (e) { strike(e, TSK.maulDmg, {}); if (e.st !== 'dead') { e.st = 'carried'; e.t = 0; p.maul.side0 = p.face; } else p.maul = null; }
-  if (!p.maul) doHit(p, 'tc2');
+  const cx0 = e ? e.x : p.x + p.face * 40;   // 地底血爪从敌人脚下破土
+  vfx('claw_up', cx0, p.y, { ground: true, flip: p.face < 0 });
+  burst(cx0, p.y - 2, 10, { col: 'stone', a0: Math.PI, a1: Math.PI * 2, v1: 140 });
+  if (!p.maul) { doHit(p, 'tc2'); vfx('claw_toss', cx0, p.y, { ground: true, flip: p.face < 0, delay: 0.18 }); }
 }
 function updateMaul(p, dt) {
   const m = p.maul;
@@ -721,7 +772,7 @@ function updateMaul(p, dt) {
     p.face = side;
     strike(e, TSK.maulDmg, {});
     for (const o of alive()) if (o !== e && Math.abs(o.x - e.x) < 80 && Math.abs(o.y - e.y) < 40) strike(o, TSK.maulAoe, { launch: -150, kb: sign(o.x - e.x) * 120 });
-    vfx('exp2_blood', e.x, e.y + 4, { ground: true });
+    vfx('claw_slam', e.x - side * 7, p.y, { ground: true, flip: side < 0 });   // 巨爪攥着敌人砸下去
     burst(e.x, e.y - 4, 14, { a0: Math.PI, a1: Math.PI * 2, v1: 160 });
     R.shake = Math.max(R.shake, 3); R.stop = Math.max(R.stop, 0.04);
     buzz(25);
@@ -734,7 +785,7 @@ function updateMaul(p, dt) {
   if (m.i >= TSK.maulSlams && !m.thrown) {
     m.thrown = true;
     strike(e, TSK.tossDmg, { launch: -360, kb: p.face * 320 });
-    vfx('exp2_blood', e.x, e.y - 16);
+    vfx('claw_toss', e.x, p.y, { ground: true, flip: p.face < 0 });
     R.stop = 0.08; R.shake = 5;
   }
   if (m.thrown && m.t >= (TSK.maulSlams + 1) * TSK.maulGap + 0.15) { p.maul = null; setSt(p, 'idle'); }
@@ -745,14 +796,17 @@ function endMaul(p) {
   p.maul = null;
 }
 
-// P 葬：暴走收尾的全屏大砸，伤害 = 基础 + 本次暴走连击数 × 1.5
+// P 葬：血契之影捧起巨碑砸地（burial 第 5 帧落地），主角同步砸下；伤害 = 基础 + 本次暴走连击数 × 1.5
+const FIN = { hitT: 4 / 12, after: 0.5, heroFps: 6, back: -8, land: 40 };   // hitT 对齐 burial 落地帧；heroFps 让主角第 2 帧同时砸下
+function startFinisher(p) {
+  endMaul(p); setSt(p, 'tfinish');
+  R.shade = null;   // 常驻的影子换成捧碑的那一套
+  vfx('burial', p.x + FIN.back * p.face, p.y, { ground: true, flip: p.face < 0, back: true });
+}
 function doFinisher(p) {
   const dmg = TSK.finBase + R.rcombo * TSK.finCombo;
   for (const e of alive()) if (onScreen(p, e)) strike(e, dmg, { launch: -260, kb: sign(e.x - p.x) * 120 });
-  const fx0 = p.x + p.face * 30;
-  R.fx.push({ k: 'wave', x: p.x, y: p.y - 10, t: 0 });
-  R.fx.push({ k: 'drop', x: fx0, y: p.y, t: 0, big: true });
-  R.fx.push({ k: 'wave', x: fx0, y: p.y - 4, t: 0.12 });
+  const fx0 = p.x + (FIN.back + FIN.land) * p.face;
   burst(fx0, p.y - 6, 110, { a0: Math.PI, a1: Math.PI * 2, up: 60, v0: 80, v1: 320, life: 0.9 });
   for (const dx of [-40, 0, 40]) vfx('exp2_blood', fx0 + dx, p.y + 4, { ground: true, delay: Math.abs(dx) / 400 });
   R.flash = 0.15; R.flashCol = '255,60,70';
@@ -936,7 +990,7 @@ function heroFrame(p) {
     case 'rdash': return ['t_sweep', 0];
     case 'train': return f('t_drop', T_FPS, false);
     case 'tmaul': return p.maul && p.maul.i < TSK.maulSlams ? ['t_clawslam', p.maul.t % TSK.maulGap < TSK.maulGap / 2 ? 1 : 3] : f('t_grab', 12, false);
-    case 'tfinish': return f('t_finisher', T_FPS, false);
+    case 'tfinish': return f('t_finisher', FIN.heroFps, false);
   }
   return ['idle', 0];
 }
@@ -996,12 +1050,6 @@ function drawMark(x, y) {
   rx.fillStyle = '#e8c25a'; rx.fillRect(x - 2, y - 3, 5, 7); rx.fillRect(x - 1, y - 4, 3, 1);
   rx.fillStyle = '#7a4a1a'; rx.fillRect(x, y - 2, 1, 4); rx.fillRect(x - 1, y - 1, 3, 1);
 }
-/* 墓碑：碑落砸下 */
-function drawSlab(x, y, w, h, color) {
-  rx.fillStyle = color;
-  rx.fillRect(x - w / 2, y - h, w, h);
-  rx.fillRect(x - w / 2 + 2, y - h - 2, w - 4, 2);
-}
 /* 飞出去的墓碑巨剑：按 45° 一档旋转，保持像素感 */
 function drawBlade(cx, cy) {
   const b = R.blade;
@@ -1022,15 +1070,17 @@ function drawBlade(cx, cy) {
 }
 /* 暴走普攻的血色月牙刀气 */
 function drawShots(cx, cy) {
+  const m = VFX.wave_fly, im = rImg('vfx/wave_fly.png');
+  if (!m || !ready(im)) return;
   for (const s2 of R.shots) {
-    const x = Math.round(s2.x - cx), y = Math.round(s2.y - cy), r = s2.big ? 20 : 14, d = sign(s2.vx);
-    const a = 1 - Math.max(0, s2.t / TSK.waveLife - 0.6) / 0.4;
-    rx.globalAlpha = a;
-    rx.strokeStyle = '#c01830'; rx.lineWidth = 5;
-    rx.beginPath(); rx.arc(x - d * r * 0.6, y, r, d > 0 ? -1.1 : Math.PI - 1.1, d > 0 ? 1.1 : Math.PI + 1.1); rx.stroke();
-    rx.strokeStyle = '#ff9a8a'; rx.lineWidth = 2;
-    rx.beginPath(); rx.arc(x - d * r * 0.6, y, r, d > 0 ? -0.9 : Math.PI - 0.9, d > 0 ? 0.9 : Math.PI + 0.9); rx.stroke();
-    rx.globalAlpha = 1;
+    const i = Math.min(s2.t * m.fps, 1) < 1 ? 0 : 1 + Math.floor(s2.t * m.fps) % (m.n - 1);   // 第 0 帧是成形，之后循环
+    const sc = s2.big ? 1.35 : 1;
+    rx.save();
+    rx.globalAlpha = 1 - Math.max(0, s2.t / TSK.waveLife - 0.6) / 0.4;
+    rx.translate(Math.round(s2.x - cx), Math.round(s2.y - cy));
+    rx.scale(sign(s2.vx) * sc, sc);
+    rx.drawImage(im, i * m.fw, 0, m.fw, m.fh, -m.ax, -m.ay, m.fw, m.fh);
+    rx.restore();
   }
 }
 
@@ -1077,19 +1127,30 @@ function drawArc(fx, cx, cy) {
   rx.restore();
 }
 
-function drawFx(cx, cy) {
+// 精灵帧号。hold=[a,b]：放开（f.rel）前在 a..b 间循环，放开后从 b+1 往后播完
+function sprFrame(f, m, t) {
+  const i = (m.s || 0) + Math.floor(t * m.fps);   // s：跳过素材开头的实心闪光帧
+  if (!f.hold) return i;
+  const [a, b] = f.hold;
+  if (f.rel === undefined) return i <= b ? i : a + (i - a) % (b - a + 1);
+  return b + 1 + Math.floor((f.t - f.rel) * m.fps);
+}
+function drawFx(cx, cy, back = false) {
   for (const f of R.fx) {
+    if (!!f.back !== back) continue;   // back：画在主角身后（召唤物）
     const x = Math.round(f.x - cx), y = Math.round(f.y - cy);
     if (f.k === 'spr') {
       const m = VFX[f.name], im = rImg(`vfx/${f.name}.png`), t = f.t - (f.delay || 0);
       if (!m || !ready(im) || t < 0) continue;
-      const i = (m.s || 0) + Math.floor(t * m.fps);   // s：跳过素材开头的实心闪光帧
+      const i = sprFrame(f, m, t);
       if (i >= m.n) continue;
       rx.save();
       rx.translate(x, y);
       if (f.rot) rx.rotate(f.rot);
       if (f.flip) rx.scale(-1, 1);
-      rx.drawImage(im, i * m.fw, 0, m.fw, m.fh, -Math.round(m.fw / 2), f.ground ? -m.fh : -Math.round(m.fh / 2), m.fw, m.fh);
+      if (f.alpha) rx.globalAlpha = f.alpha;
+      const ax = m.ax ?? Math.round(m.fw / 2), ay = m.ay ?? (f.ground ? m.fh : Math.round(m.fh / 2));   // ax/ay：召唤物素材自带锚点
+      rx.drawImage(im, i * m.fw, 0, m.fw, m.fh, -ax, -ay, m.fw, m.fh);
       rx.restore();
     } else if (f.k === 'parts') {
       const k = f.t / f.life; if (k >= 1) continue;
@@ -1132,10 +1193,6 @@ function drawFx(cx, cy) {
       const k = f.t / 0.2; if (k >= 1) continue;
       rx.strokeStyle = `rgba(230,245,255,${1 - k})`; rx.lineWidth = 2;
       rx.beginPath(); rx.moveTo(x, y); rx.lineTo(Math.round(f.x1 - cx), Math.round(f.y1 - cy)); rx.stroke();
-    } else if (f.k === 'wave') {   // 变身冲击波 / 葬
-      const k = f.t / 0.5; if (k >= 1) continue;
-      rx.strokeStyle = `rgba(255,70,80,${1 - k})`; rx.lineWidth = 3;
-      rx.beginPath(); rx.ellipse(x, y, 10 + 200 * k, 6 + 60 * k, 0, 0, Math.PI * 2); rx.stroke();
     } else if (f.k === 'spike') {   // 裂地：地面裂开冒出血红碑刺
       const k = f.t / 0.4; if (k >= 1) continue;
       const hgt = Math.round(30 * Math.min(1, k * 5) * (1 - Math.max(0, k - 0.6) / 0.4));
@@ -1147,13 +1204,11 @@ function drawFx(cx, cy) {
       const k = f.t / 0.3; if (k >= 1) continue;
       rx.fillStyle = `rgba(120,90,80,${0.7 * (1 - k)})`;
       rx.fillRect(x - 3 - k * 6, y - 3 - k * 8, 4, 4); rx.fillRect(x + 2 + k * 4, y - 2 - k * 5, 3, 3);
-    } else if (f.k === 'drop') {   // 碑落：墓碑从天而降
-      const k = f.t / 0.45; if (k >= 1) continue;
-      const fall = Math.min(1, f.t / 0.1), w = f.big ? 26 : 14, h = f.big ? 40 : 22;
-      rx.globalAlpha = k < 0.6 ? 1 : 1 - (k - 0.6) / 0.4;
-      drawSlab(x, Math.round(y - 80 * (1 - fall)), w, h, '#8a7a8a');
-      rx.fillStyle = '#c03040'; rx.fillRect(x - 1, Math.round(y - 80 * (1 - fall)) - h + 4, 2, h - 8);
-      rx.globalAlpha = 1;
+    } else if (f.k === 'drop') {   // 碑雨：墓碑从天而降，插地一下再碎（碎裂另播 grave_break）
+      const m = VFX.grave_fall, im = rImg('vfx/grave_fall.png');
+      if (f.t >= 0.2 || !m || !ready(im)) continue;
+      const yy = Math.round(y - 90 * (1 - Math.min(1, f.t / 0.1)));
+      rx.drawImage(im, (f.v || 0) * m.fw, 0, m.fw, m.fh, x - m.ax, yy - m.ay, m.fw, m.fh);
     } else if (f.k === 'ghost') {
       const k = f.t / 0.25; if (k >= 1) continue;
       const m = HERO_A.dash, im = rImg('hero2/hero_dash.png');
@@ -1372,6 +1427,7 @@ const roomScene = {
     updateCuts(dt);
     updateShots(dt);
     updateRain(dt);
+    updateShade(R.p, dt);
     if ((R.witch > 0 || p.form === 'blood') && (R.afterT -= dt) <= 0 && (Math.abs(p.vx) > 40 || !p.ground) && p.st !== 'storm') {
       R.afterT = 0.05;
       afterImage(p);
@@ -1417,6 +1473,8 @@ const roomScene = {
       g.addColorStop(0, 'rgba(80,0,10,0)'); g.addColorStop(1, 'rgba(90,0,15,0.6)');
       rx.fillStyle = g; rx.fillRect(0, 0, RB_W, RB_H);
     }
+    drawShade(cx, cy);
+    drawFx(cx, cy, true);
     drawHero(p, cx, cy);
     drawBlade(cx, cy);
     drawShots(cx, cy);

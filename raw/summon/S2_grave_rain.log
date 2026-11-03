@@ -1,0 +1,3 @@
+HTTP 200
+saved ../summon/S2_grave_rain_1.png Create a single 4 columns × 3 rows sprite sheet, exactly 12 equal-sized animation cells, with NO visible grid lines, NO labels, NO numbers, and no dividers. Transparent-looking key-color background mu
+usage {"input_tokens": 5119, "input_tokens_details": {"cache_write_tokens": 2488, "cached_tokens": 0}, "output_tokens": 644, "output_tokens_details": {"reasoning_tokens": 0}, "total_tokens": 5763, "cost_usd": 0.01921}

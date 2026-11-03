@@ -16,6 +16,7 @@ const sb = {
   drawText: noop, setScene: noop, titleScene: {},
 };
 sb.window.HERO2 = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/hero2/manifest.js'), 'utf8').replace(/^window\.HERO2 = /, '').replace(/;\s*$/, ''));
+sb.window.VFX = JSON.parse(fs.readFileSync(path.join(ROOT, 'assets/vfx/manifest.js'), 'utf8').replace(/^window\.VFX = /, '').replace(/;\s*$/, ''));
 sb.input = { act: (n) => !!sb.virt[n], hit: (n) => sb.pulse.has(n) };
 vm.createContext(sb);
 const src = fs.readFileSync(path.join(ROOT, 'js/room.js'), 'utf8').replace('window.roomScene = roomScene;', 'window.roomScene = roomScene; window.__R = R;');
@@ -157,15 +158,27 @@ function toBlood(r, sec = 10) { r.p.form = 'blood'; r.p.rage = r.p.rageMax = sec
   check('血狱 不需要断裂也能放', r.p.st === 'storm', r.p.st);
   step(1.0);
   check('血狱 每只挨 3 道', es.every((e) => 600 - e.hp >= 54), es.map((e) => 600 - e.hp).join(' / '));
+  check('血狱 牢笼全部斩碎消失', !r.fx.some((f) => f.name === 'prison'), r.fx.filter((f) => f.name === 'prison').length);
 }
 // 12c 时间到自动「葬」：全屏伤害按连击数加成，之后回常态
 {
   const r = fresh(); toBlood(r, 0.3);
   const e = dummy(500);
   r.rcombo = 20;
-  step(1.2);
+  step(1.5);   // 0.3 秒暴走 + 葬的捧碑砸地约 0.85 秒
   check('时间到自动葬并回常态', r.p.form === 'normal', r.p.form);
   check('葬 全屏伤害含连击加成', 600 - e.hp >= 30 + 20 * 1.5, `掉 ${600 - e.hp}`);
+}
+// 12d 葬：伤害和捧碑砸地的落地帧对齐，影子换成捧碑那一套
+{
+  const r = fresh(); toBlood(r); r.shade = { st: 'shade_idle', t: 0, x: 180, y: r.p.y, face: 1 };
+  const e = dummy(400);
+  step(0.05, 's4');
+  check('葬 影子换成捧碑', !r.shade && r.fx.some((f) => f.name === 'burial'));
+  step(0.2);
+  check('葬 落地前不结算', e.hp === 600, `掉 ${600 - e.hp}`);
+  step(0.2);
+  check('葬 落地帧结算', e.hp < 600, `掉 ${600 - e.hp}`);
 }
 // 12d 暴走中击杀加时；敌人半速
 {
@@ -207,6 +220,11 @@ function toBlood(r, sec = 10) { r.p.form = 'blood'; r.p.rage = r.p.rageMax = sec
   check('变身吞掉全部魂', r.p.soul === 0 && Math.abs(r.p.rageMax - 10) < 0.01, `暴走 ${r.p.rageMax} 秒`);
   step(0.8);
   check('变身完成', r.p.form === 'blood');
+  check('变身召出血契之影', !!r.shade, r.shade && r.shade.st);
+  step(0.5);
+  check('影子跟在主角身后', r.shade && (r.shade.x - r.p.x) * r.p.face < 0 && Math.abs(r.shade.x - r.p.x) < 45, r.shade && (r.shade.x - r.p.x).toFixed(1));
+  step(0.05, 'attack'); step(0.12);   // 等到普攻出判定那一帧
+  check('普攻时影子挥爪', r.shade && r.shade.st === 'shade_swipe', r.shade && r.shade.st);
 }
 
 console.log(fails ? `\n${fails} 项失败` : '\n全部通过');
