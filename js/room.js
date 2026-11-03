@@ -1218,7 +1218,7 @@ function drawProps(cx, cy) {
 
 /* ---------- HUD ---------- */
 /* 变身切入：左下角一块碎玻璃形状的画框，装着变身后的脸部特写；甩入 → 停留 → 碎成十几片飞散 */
-const CUTIN = { w: 520, h: 236, inT: 0.16, holdT: 1.1, outT: 0.5, pts: [[0, 34], [300, 0], [470, 22], [520, 196], [210, 236], [24, 214]] };
+const CUTIN = { s: 0.85, w: 520, h: 236, inT: 0.16, holdT: 1.1, outT: 0.5, pts: [[0, 34], [300, 0], [470, 22], [520, 196], [210, 236], [24, 214]] };
 const CUTIN_C = [260, 118];
 const CUTIN_TRIS = (() => {   // 中心点连到每条边，再从边中点切一刀，得到 12 片三角碎片
   const out = [], P = CUTIN.pts;
@@ -1261,6 +1261,7 @@ function drawCutin(x0, y0) {
     const k = Math.min(1, t / CUTIN.inT), e = 1 - Math.pow(1 - k, 3);
     ctx.translate(x0 - (1 - e) * 640, y0);
     ctx.rotate(-0.04);
+    ctx.scale(CUTIN.s, CUTIN.s);
     ctx.save(); polyPath(CUTIN.pts); ctx.clip(); paintCutin(im, t);
     if (k < 1) { ctx.fillStyle = `rgba(255,255,255,${1 - k})`; ctx.fillRect(0, 0, CUTIN.w, CUTIN.h); }
     ctx.restore();
@@ -1281,7 +1282,7 @@ function drawCutin(x0, y0) {
   } else {
     // 碎裂：每片带着脸的局部向外飞、旋转、下落、淡出
     const k = (t - hold) / CUTIN.outT;
-    ctx.translate(x0, y0); ctx.rotate(-0.04);
+    ctx.translate(x0, y0); ctx.rotate(-0.04); ctx.scale(CUTIN.s, CUTIN.s);
     CUTIN_TRIS.forEach((tri, i) => {
       const cxm = (tri[0][0] + tri[1][0] + tri[2][0]) / 3, cym = (tri[0][1] + tri[1][1] + tri[2][1]) / 3;
       const dx = cxm - CUTIN_C[0], dy = cym - CUTIN_C[1], d = Math.hypot(dx, dy) || 1;
@@ -1445,7 +1446,7 @@ const roomScene = {
       if (p.cd.o <= 0 && p.form === 'normal' && Math.floor(R.time * 4) % 2 === 0) drawText(tc ? '按「狱」瞬狱' : '按 O 瞬狱', VW / 2, 196, 24, '#c8f0ff', 'center');
     }
     if (R.msg) drawText(R.msg.text, VW / 2, 240, 36, R.msg.color, 'center');
-    drawCutin(16 + sl, H - 330);
+    drawCutin(8 + sl, H - Math.round(CUTIN.h * CUTIN.s) + 2);   // 贴着左下角最底边，少挡战斗画面
     if (!tc) {
       const l2 = p.form === 'blood'
         ? '暴走中（无敌）：J 刀气三连　空格 血影闪　U 碑雨　I 血爪乱舞　O 血狱　P 葬（提前收尾）'
