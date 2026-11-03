@@ -6,3 +6,9 @@
   lorc：broadsword、whirlwind、shadow-follower、wolf-head、crossed-swords、fire-ring、sword-wound、horned-skull、laurels、raven、sprint、treasure-map、scroll-unfurled、stopwatch、hammer-drop、fist、target-arrows、wolf-howl、paw-print、double-shot、lightning-trio、bleeding-wound、heart-bottle、sun、cycle、cracked-shield、spiked-armor、barbute、anvil-impact、axe-swing、thorny-vine、rock、crescent-blade、wind-slap、boot-prints、plain-dagger、muscle-up、eyeball、dripping-blade、crown-coin、chained-heart、backup、shield-reflect、fire-silhouette、burning-embers、stomp、rolling-energy、pierced-body、skull-crack、bell-shield、ankh、dragon-head、skull-crossed-bones、daemon-skull
 
 字体：缝合像素字体 Fusion Pixel 12px 简体中文版，SIL OFL 1.1（https://github.com/TakWolf/fusion-pixel-font），授权文本见 assets/fonts/OFL.txt。
+
+场景与怪物（assets/gv/）：ansimuz《Gothicvania》系列，CC0。
+技能特效（assets/vfx/，均为 CC0，已按游戏配色重新上色；刀光已缩小减色成像素风）：
+  ansimuz《Animated Explosions》https://opengameart.org/content/animated-explosions
+  kurohina《Spark effect》https://opengameart.org/content/spark-effect
+  Cethiel《Weapon Slash - Effect》https://opengameart.org/content/weapon-slash-effect

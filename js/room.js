@@ -19,6 +19,8 @@ function syncWidth() {
 }
 
 const HERO_A = window.HERO2 || {};
+/* 开源特效精灵（assets/vfx，CC0，见 CREDITS）：常态技能用青蓝「魂火」配色，变身后用猩红「血焰」 */
+const VFX = window.VFX || {};
 const COMBO_STEP = [{ f0: 0, hit: 2 }, { f0: 4, hit: 1 }, { f0: 8, hit: 1 }];
 // 变身后普攻：巨刃横扫 → 反扫 → 巨爪拍地；攻速 -15%
 const T_FPS = 12 * 0.85;
@@ -154,6 +156,11 @@ function autoFace(p, dir) {
 }
 
 function say(text, color = '#f0e6f6') { R.msg = { text, color, t: 1.2 }; }
+function vfx(name, x, y, o = {}) {
+  const m = VFX[name];
+  R.fx.push({ k: 'spr', name, x, y, t: 0, life: m ? (m.n - (m.s || 0)) / m.fps : 0.5, ...o });
+}
+const tint = () => (R.p.form === 'blood' ? 'blood' : 'soul');
 function afterImage(p, x, y) {
   const [name, i] = heroFrame(p);
   R.fx.push({ k: 'after', x: x ?? p.x, y: y ?? p.y, face: p.face, name, i, t: 0 });
@@ -369,6 +376,7 @@ function castSkills(p, dir, blood) {
       setSt(p, 'thrust'); p.hitSet = new Set(); p.inv = 0.22; p.perfectUsed = false;
       p.vx = p.face * SK.u.dist / SK.u.t; p.vy = 0;
       R.fx.push({ k: 'ghost', x: p.x, y: p.y, face: p.face, t: 0 });
+      vfx('trail_soul', p.x + p.face * 26, p.y - 20, { rot: p.face > 0 ? Math.PI / 4 : -Math.PI / 4, flip: p.face < 0 });
       checkPerfect(p);
     } else if (want(p, 's2') && R.blade) {   // I 再按：瞬身到剑的位置
       use(p, 's2'); blink(p);
@@ -453,6 +461,7 @@ function plungeHit(p) {
     p.vy = -330; p.dj = false; p.airDash = true; setSt(p, 'jump');
     R.stop = 0.05; R.shake = Math.max(R.shake, 2);
     R.fx.push({ k: 'spark', x: p.x, y: p.y, t: 0, n: 7 });
+    vfx('exp1_soul', p.x, p.y);
     return;
   }
 }
@@ -464,6 +473,7 @@ function thrustHits(p) {
   for (const e of alive()) {
     if (p.hitSet.has(e) || !overlap(box, eBox(e))) continue;
     p.hitSet.add(e);
+    vfx('exp1_soul', e.x, e.y - 16);
     strike(e, SK.u.dmg, { critStun: true, mark: SK.u.mark, skill: 'u', kb: p.face * 40 });
     R.stop = Math.max(R.stop, 0.03); R.shake = Math.max(R.shake, 2);
   }
@@ -499,6 +509,7 @@ function updateBlade(dt) {
   for (const e of alive()) {
     if (b.hit.has(e) || !overlap(box, eBox(e))) continue;
     b.hit.add(e);
+    vfx('exp1_soul', b.x, b.y);
     strike(e, SK.i.dmg, { skill: 'i', stun: SK.i.pin, kb: sign(b.vx) * 20 });
     R.shake = Math.max(R.shake, 1);
   }
@@ -517,6 +528,7 @@ function blink(p) {
   }
   for (let k = 0; k < 4; k++) afterImage(p, lerp(x0, x1, k / 4), lerp(y0, y1, k / 4));
   R.fx.push({ k: 'line', x: x0, y: y0 - 20, x1, y1: y1 - 20, t: 0 });
+  vfx('exp6_soul', x1, y1 - 18);
   p.x = x1; p.y = y1; p.vx = p.face * 60; p.vy = 0; p.ground = y1 >= ROOM.ground; p.inv = 0.25; p.dj = false; p.airDash = true;
   R.blade = null; p.cd.i = CD.i;
   setSt(p, 'blink');
@@ -544,6 +556,8 @@ function updateCuts(dt) {
     c.t += dt;
     if (c.done || c.t < c.delay) continue;
     c.done = true;
+    for (const ln of c.lines) vfx('cut_soul', c.x + ln.dx, c.y + ln.dy, { rot: ln.a + Math.PI / 4 });
+    vfx(c.area || c.big ? 'exp2_soul' : 'exp1_soul', c.x, c.y);
     if (c.area) {
       const box = { x0: c.x - c.w / 2, x1: c.x + c.w / 2, y0: c.y - c.h / 2, y1: c.y + c.h / 2 };
       for (const e of alive()) if (overlap(box, eBox(e))) strike(e, c.dmg, { skill: 'o', stun: SK.o.stun });
@@ -574,7 +588,11 @@ function updateStorm(p, dt) {
     afterImage(p);
     R.fx.push({ k: 'line', x: p.x, y: p.y - 20, x1: nx, y1: e.y - 20, t: 0 });
     p.x = nx; p.y = e.y; p.face = sign(e.x - p.x) || p.face;
-    for (let k = 0; k < SK.o.stormCuts; k++) R.cuts.push(cutOn(e, 0, SK.o.stormDmg, true));
+    for (let k = 0; k < SK.o.stormCuts; k++) {
+      const c = cutOn(e, 0, SK.o.stormDmg, true);
+      c.big = k === SK.o.stormCuts - 1;   // 每只敌人最后一道带大爆炸
+      R.cuts.push(c);
+    }
     R.shake = Math.max(R.shake, 1);
   }
   if (s.i >= s.list.length && s.t >= s.list.length * SK.o.stormStep + 0.25) {
@@ -593,6 +611,7 @@ function updateStorm(p, dt) {
 // 变身瞬间的冲击波：命中一屏内所有带墓志的敌人
 function transformWave(p) {
   R.fx.push({ k: 'wave', x: p.x, y: p.y - 20, t: 0 });
+  vfx('exp4_blood', p.x, p.y + 4, { ground: true });
   R.shake = Math.max(R.shake, 4); R.stop = 0.08;
   buzz(60);
   for (const e of alive()) if (e.mark > 0 && onScreen(p, e)) strike(e, PACT.wave, { launch: -200 });
@@ -615,7 +634,7 @@ function updateDrag(p, dt) {
     p.vx *= Math.pow(0.001, dt);
     if (!p.hitDone) {
       p.hitDone = true;
-      for (const e of p.carry) if (e.st === 'carried') strike(e, TSK.tossDmg, { launch: -320, kb: -p.face * 220 });
+      for (const e of p.carry) if (e.st === 'carried') { vfx('exp2_blood', e.x, e.y - 16); strike(e, TSK.tossDmg, { launch: -320, kb: -p.face * 220 }); }
       if (p.carry.length) { R.stop = 0.08; R.shake = 4; buzz(50); }
       p.carry = [];
     }
@@ -637,6 +656,7 @@ function updateQuake(p, dt) {
     const x = q.x + q.face * (50 + q.i * 48);
     q.i++;
     R.fx.push({ k: 'spike', x, y: q.y, t: 0 });
+    vfx('exp6_blood', x, q.y - 18);
     const box = { x0: x - 22, x1: x + 22, y0: q.y - 50, y1: q.y + 4 };
     for (const e of alive()) if (overlap(box, eBox(e))) strike(e, TSK.quakeDmg, { launch: -240, kb: q.face * 40 });
     R.shake = Math.max(R.shake, 3);
@@ -654,6 +674,7 @@ function doDrop(p) {
   }
   for (const e of targets) {
     R.fx.push({ k: 'drop', x: e.x, y: e.y, t: 0 });
+    vfx('exp2_blood', e.x, e.y + 4, { ground: true, delay: 0.08 });
     e.mark = 0;
     strike(e, TSK.drop, { critStun: true, kb: 0 });
   }
@@ -667,6 +688,7 @@ function doFinisher(p) {
   for (const e of alive()) if (overlap(box, eBox(e))) strike(e, dmg, { launch: -260, kb: sign(e.x - p.x) * 120 });
   R.fx.push({ k: 'wave', x: p.x, y: p.y - 10, t: 0 });
   R.fx.push({ k: 'drop', x: p.x + p.face * 30, y: p.y, t: 0, big: true });
+  vfx('exp5_blood', p.x + p.face * 20, p.y + 6, { ground: true });
   R.shake = 6; R.stop = 0.12;
   buzz(80);
   p.pact = 0;
@@ -677,6 +699,7 @@ function breakForm(p) {
   releaseCarry(p);
   p.form = 'normal'; p.pact = 0; p.quake = null;
   setSt(p, 'tbreak'); p.vx = -p.face * 80;
+  vfx('exp3_blood', p.x, p.y + 4, { ground: true });
   R.fx.push({ k: 'spark', x: p.x, y: p.y - 20, t: 0, n: 12 });
   R.shake = 4;
   say('碑碎', '#ff8a8a');
@@ -748,10 +771,12 @@ const leapBox = (e) => ({ x0: e.x - 20, x1: e.x + 20, y0: e.y - 28, y1: e.y });
 function hurtEnemy(e, dmg, kb, launch, o = {}) {
   e.hp -= dmg; e.flash = 0.12;
   R.nums.push({ x: e.x + rnd(-10, 10), y: e.y - 34 - rnd(0, 8), v: dmg, c: o.crit ? '#ffd23a' : '#fff2c0', big: o.crit, t: 0 });   // 抖开，挤在一起的敌人数字不糊成一团
-  R.fx.push({ k: 'spark', x: e.x, y: e.y - 16, t: 0, n: o.crit ? 9 : 5 });
+  vfx('hit_' + tint(), e.x + rnd(-4, 4), e.y - 14 + rnd(-4, 4), { rot: rnd(0, 6.28) });
+  if (o.crit) vfx('exp1_' + tint(), e.x, e.y - 16);
   if (e.hp <= 0) {
     e.st = 'dead'; R.kills++;
     R.fx.push({ k: 'death', x: e.x, y: e.y, t: 0 });
+    vfx('exp6_' + tint(), e.x, e.y - 16);
     return;
   }
   e.vx = kb;
@@ -1005,7 +1030,18 @@ function drawArc(fx, cx, cy) {
 function drawFx(cx, cy) {
   for (const f of R.fx) {
     const x = Math.round(f.x - cx), y = Math.round(f.y - cy);
-    if (f.k === 'arc') drawArc(f, cx, cy);
+    if (f.k === 'spr') {
+      const m = VFX[f.name], im = rImg(`vfx/${f.name}.png`), t = f.t - (f.delay || 0);
+      if (!m || !ready(im) || t < 0) continue;
+      const i = (m.s || 0) + Math.floor(t * m.fps);   // s：跳过素材开头的实心闪光帧
+      if (i >= m.n) continue;
+      rx.save();
+      rx.translate(x, y);
+      if (f.rot) rx.rotate(f.rot);
+      if (f.flip) rx.scale(-1, 1);
+      rx.drawImage(im, i * m.fw, 0, m.fw, m.fh, -Math.round(m.fw / 2), f.ground ? -m.fh : -Math.round(m.fh / 2), m.fw, m.fh);
+      rx.restore();
+    } else if (f.k === 'arc') drawArc(f, cx, cy);
     else if (f.k === 'streak') {
       const k = f.t / 0.15; if (k >= 1) continue;
       rx.fillStyle = `rgba(255,240,210,${1 - k})`;
@@ -1170,7 +1206,8 @@ const roomScene = {
     rReset();
     preload(['gv/cemetery/background.png', 'gv/cemetery/mountains.png', 'gv/cemetery/graveyard.png', 'gv/cemetery/tileset.png',
       'gv/enemy-death.png', ...Object.keys(HOUND.anim).map((a) => `gv/hound/hell-hound-${a}.png`),
-      ...Object.keys(HERO_A).map((n) => `hero2/hero_${n}.png`), ...ROOM.props.map(([n]) => `gv/cemetery/${n}.png`)]);
+      ...Object.keys(HERO_A).map((n) => `hero2/hero_${n}.png`), ...ROOM.props.map(([n]) => `gv/cemetery/${n}.png`),
+      ...Object.keys(VFX).map((n) => `vfx/${n}.png`)]);
   },
   update(dt) {
     if (input.hit('pause')) { setScene(titleScene); return; }
@@ -1196,7 +1233,7 @@ const roomScene = {
     for (const e of R.en) if (e.st !== 'dead') houndUpdate(e, p, edt);
     R.en = R.en.filter((e) => e.st !== 'dead');
     for (const f of R.fx) f.t += dt;
-    R.fx = R.fx.filter((f) => f.t < 0.6);
+    R.fx = R.fx.filter((f) => f.t < (f.life ? f.life + (f.delay || 0) : 0.6));
     for (const n of R.nums) n.t += dt;
     R.nums = R.nums.filter((n) => n.t < 0.7);
     if (!R.en.length && !R.dead) { R.waveT -= dt; if (R.waveT <= 0) { spawnWave(); R.waveT = 2; } }
