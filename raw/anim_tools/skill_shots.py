@@ -63,6 +63,10 @@ try:
     press = lambda k: js(f"pulse.add('{k}')")
 
     reset_cd = "window.__R.p.cd = { u: 0, i: 0, o: 0 }"
+    if len(sys.argv) > 4 and sys.argv[4] == 'cutin':   # 冻结切入画面：停留中 / 碎裂中
+        for name, t in [('cut_hold', 0.35), ('cut_glint', 0.36), ('cut_shatter', 1.42)]:
+            js(f"window.__R.cutin = {{ t: {t}, freeze: true }}"); time.sleep(0.3); shot(name)
+        print(chr(10).join(logs) or 'no errors'); sys.exit(0)
     if len(sys.argv) > 4 and sys.argv[4] == 'transform':   # 变身切入、暴走技能、葬
         js("window.__R.p.soul = 5")
         press('s4')

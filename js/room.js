@@ -39,7 +39,7 @@ const BUF = 0.12, COYOTE = 0.08;   // 预输入：按键提前 0.12 秒也算数
 /* 技能数值（文档 §8.8，数值为拟定） */
 const CD = { u: 6, i: 5, o: 7 };   // 常态与变身共用同一套冷却；掷碑的冷却从剑回到手里才开始算
 const SK = {
-  u: { dist: 200, t: 0.18, dmg: 18, mark: 10 },
+  u: { dist: 140, t: 0.15, dmg: 18, mark: 10 },   // 一口气穿过去；冲完离敌人不远，方便回身接普攻
   // 掷碑：飞出 0.34 秒（约 175 像素）→ 悬停 → 飞回；去程回程各打一次并钉住；剑在外面时再按瞬身过去斩一刀
   i: { speed: 520, out: 0.34, hover: 0.12, back: 640, dmg: 10, pin: 0.6, slash: 14 },
   // 断空：前方区域 0.3 秒后爆出斩痕，屏幕里带墓志的敌人身上也各爆一道；瞬狱：在屏幕内所有敌人之间穿梭，每只 3 道斩痕
@@ -319,18 +319,17 @@ function playerUpdate(p, dt) {
       if (p.t >= 0.3) setSt(p, p.ground ? 'idle' : 'fall');
       break;
     // ---- 常态技能 ----
-    case 'thrust': {
+    case 'thrust':
       p.vy = 0;
-      // 穿过第一个敌人后停在它身后、回身面向它，方便直接接普攻；前面没敌人就冲满
-      const stop = p.thrustStop != null && (p.x - p.thrustStop) * p.face >= 0;
-      if (p.t < SK.u.t && !stop) thrustHits(p);
-      else if (!p.hitDone) {
-        p.hitDone = true; p.vx = 0; p.t = Math.max(p.t, SK.u.t);
-        if (p.thrustFace) p.face = p.thrustFace;
+      if (p.t < SK.u.t) thrustHits(p);
+      else p.vx *= Math.pow(0.0005, dt);   // 冲完短暂滑行
+      if (p.t >= SK.u.t + 0.06) {
+        // 刚穿过的敌人就在身后 100 像素内：自动回身面向它，排队的普攻直接接上
+        const back = [...p.hitSet].filter((e) => e.st !== 'dead' && (e.x - p.x) * p.face < 0 && Math.abs(e.x - p.x) < 100);
+        if (back.length) p.face = -p.face;
+        p.comboGap = 9; setSt(p, p.ground ? 'idle' : 'fall');
       }
-      if (p.t >= SK.u.t + 0.05) { p.comboGap = 9; setSt(p, p.ground ? 'idle' : 'fall'); }
       break;
-    }
     case 'throw':
       if (p.ground) p.vx *= Math.pow(0.01, dt);
       if (!p.hitDone && p.t >= 1 / 12) { p.hitDone = true; throwBlade(p); }
@@ -397,7 +396,7 @@ function castSkills(p, dir, blood) {
   if (!blood) {
     if (ready('s1', 'u')) {   // U 送葬突刺：地面空中都能用
       use(p, 's1'); p.cd.u = CD.u; if (dir) p.face = dir;
-      setSt(p, 'thrust'); p.hitSet = new Set(); p.inv = 0.22; p.perfectUsed = false; p.thrustStop = null; p.thrustFace = 0;
+      setSt(p, 'thrust'); p.hitSet = new Set(); p.inv = 0.22; p.perfectUsed = false;
       p.vx = p.face * SK.u.dist / SK.u.t; p.vy = 0;
       R.fx.push({ k: 'ghost', x: p.x, y: p.y, face: p.face, t: 0 });
       vfx('trail_soul', p.x + p.face * 26, p.y - 20, { rot: p.face > 0 ? Math.PI / 4 : -Math.PI / 4, flip: p.face < 0 });
@@ -498,7 +497,7 @@ function thrustHits(p) {
   for (const e of alive()) {
     if (p.hitSet.has(e) || !overlap(box, eBox(e))) continue;
     p.hitSet.add(e);
-    if (p.thrustStop == null) { p.thrustStop = e.x + p.face * 30; p.thrustFace = -p.face; }
+    p.vx *= 0.75;   // 穿过一个敌人只略微减速，保留冲劲（不急停）
     vfx('exp1_soul', e.x, e.y - 16);
     strike(e, SK.u.dmg, { critStun: true, mark: SK.u.mark, skill: 'u', kb: p.face * 40 });
     R.stop = Math.max(R.stop, 0.03); R.shake = Math.max(R.shake, 2);
@@ -1240,11 +1239,12 @@ function paintCutin(im, t) {
     ctx.fillStyle = `rgba(255,60,70,${0.25 + (k % 3) * 0.15})`;
     ctx.fillRect(CUTIN.w - x, y, 60 + k * 8, 2);
   }
+  ctx.imageSmoothingEnabled = true;   // 高清立绘，平滑缩放
+  const sx = -44 + t * 14, sy = -14;   // 慢慢推近
+  ctx.drawImage(im, sx, sy);
   ctx.imageSmoothingEnabled = false;
-  const sx = -24 + t * 14;   // 慢慢推近
-  ctx.drawImage(im, sx, -54, im.width * 1.5, im.height * 1.5);
   if (t > 0.22 && t < 0.5) {   // 眼睛闪一下
-    const k = Math.sin((t - 0.22) / 0.28 * Math.PI), ex = sx + 192 * 1.5, ey = -54 + 90 * 1.5;
+    const k = Math.sin((t - 0.22) / 0.28 * Math.PI), ex = sx + 282, ey = sy + 100;
     ctx.fillStyle = `rgba(255,240,240,${k})`;
     ctx.fillRect(ex - 18 * k, ey - 1, 36 * k, 3); ctx.fillRect(ex - 1, ey - 9 * k, 3, 18 * k);
   }
@@ -1252,7 +1252,7 @@ function paintCutin(im, t) {
 function drawCutin(x0, y0) {
   const c = R.cutin;
   if (!c) return;
-  const im = rImg('hero2/cutin_face.png');
+  const im = rImg('hero2/cutin_laugh.png');
   if (!ready(im)) return;
   const t = c.t, hold = CUTIN.inT + CUTIN.holdT;
   if (t >= hold + CUTIN.outT) { R.cutin = null; return; }
@@ -1350,7 +1350,7 @@ const roomScene = {
     preload(['gv/cemetery/background.png', 'gv/cemetery/mountains.png', 'gv/cemetery/graveyard.png', 'gv/cemetery/tileset.png',
       'gv/enemy-death.png', ...Object.keys(HOUND.anim).map((a) => `gv/hound/hell-hound-${a}.png`),
       ...Object.keys(HERO_A).map((n) => `hero2/hero_${n}.png`), ...ROOM.props.map(([n]) => `gv/cemetery/${n}.png`),
-      ...Object.keys(VFX).map((n) => `vfx/${n}.png`), 'hero2/cutin_face.png']);
+      ...Object.keys(VFX).map((n) => `vfx/${n}.png`), 'hero2/cutin_laugh.png']);
   },
   update(dt) {
     if (input.hit('pause')) { setScene(titleScene); return; }

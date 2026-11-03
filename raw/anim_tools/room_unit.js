@@ -185,7 +185,7 @@ function toBlood(r, sec = 10) { r.p.form = 'blood'; r.p.rage = r.p.rageMax = sec
   check('突刺 对钉住的敌人暴击', hp0 - e.hp === 36, `掉 ${hp0 - e.hp}`);
   check('突刺 刻墓志', e.mark > 0);
 }
-// 12e 突刺 → 普攻：穿过敌人停在身后、回身，突刺中途按的攻击排队，结束立刻接上普攻并砍中
+// 12e 突刺 → 普攻：一口气穿过敌人不急停，冲完自动回身，突刺中途按的攻击排队，结束立刻接上普攻并砍中
 {
   const r = fresh();
   const e = dummy(300);
@@ -193,9 +193,10 @@ function toBlood(r, sec = 10) { r.p.form = 'blood'; r.p.rage = r.p.rageMax = sec
   step(0.04, 'attack');   // 突刺途中按攻击
   const hp1 = e.hp;
   step(0.3);
-  check('突刺停在敌人身后（没冲满 200）', r.p.x > 300 && r.p.x < 360, `主角 x ${r.p.x.toFixed(0)}`);
+  check('突刺穿过敌人、冲完离它不远', r.p.x > 310 && r.p.x < 400, `主角 x ${r.p.x.toFixed(0)}`);
   check('突刺后回身面向敌人', r.p.face === -1, `face ${r.p.face}`);
-  check('排队的普攻接上并砍中', r.p.st === 'atk' || e.hp < hp1, `st ${r.p.st} 掉 ${hp1 - e.hp}`);
+  step(0.25);
+  check('排队的普攻接上并砍中', e.hp < hp1, `st ${r.p.st} 掉 ${hp1 - e.hp} 距离 ${Math.abs(e.x - r.p.x).toFixed(0)}`);
 }
 // 13 魂：不足 3 格不能变身；变身吞掉全部魂换暴走时长
 {
