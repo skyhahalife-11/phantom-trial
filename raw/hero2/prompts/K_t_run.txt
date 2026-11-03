@@ -1,0 +1,15 @@
+Pixel art sprite sheet for a 2D side-scrolling action game: an 8-frame RUN CYCLE that loops seamlessly. Image 1 is the character's TRANSFORMED form, image 2 is an existing sprite sheet of the same transformed character: match its pixel art style, palette, proportions and character size exactly. Draw the TRANSFORMED form: white shoulder-length hair, glowing crimson eyes, wine-red long coat with gold buttons and trim, black trousers and boots, a hugely swollen crimson right arm with dark cracks ending in a giant claw, and a giant slab-like greatsword with a flat square tip and blood-red glowing engraved runes, gripped by the claw and resting on the right shoulder, pointing back.
+
+The run: a powerful, confident, aggressive forward run of a big demonic swordsman, leaning forward, fast and smooth, NOT limping, NOT stomping, NOT dragging a leg. Both legs alternate perfectly evenly: frames 1-4 are the right leg's half of the cycle, frames 5-8 are exactly the same poses with the left and right legs swapped. Stride length, knee lift and body height are identical for both legs. The body bobs only slightly (down on contact, up on passing). The blade stays steady on the shoulder through all frames; the coat tails flow back and swing with the stride; the free left arm swings opposite to the legs.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 8.
+1. Contact: right foot strikes the ground far in front, left leg extended behind, body lowest.
+2. Down: weight on the right leg, knee bent, left foot leaving the ground behind.
+3. Passing: right leg straight under the body, left knee swinging forward high, body highest.
+4. Up: pushing off the right foot, left leg reaching forward, both feet briefly off the ground.
+5. Contact: left foot strikes the ground far in front, right leg extended behind, body lowest.
+6. Down: weight on the left leg, knee bent, right foot leaving the ground behind.
+7. Passing: left leg straight under the body, right knee swinging forward high, body highest.
+8. Up: pushing off the left foot, right leg reaching forward, both feet briefly off the ground.
+
+Every frame: the SAME character, strict side view facing RIGHT (head and feet face right; never face the camera, never turn away); identical character scale in every cell; feet on the same ground line in every cell (only the small bob); whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no motion trails, no dust, no effects, no background objects, no extra characters, no text.

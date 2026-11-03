@@ -964,7 +964,7 @@ function heroFrame(p) {
   if (p.catchT > 0 && !blood && ['idle', 'run', 'land'].includes(p.st)) return ['i_catch', p.catchT > 0.09 ? 0 : 1];
   switch (p.st) {
     case 'idle': return blood ? f('t_idle', 6, true) : f('idle', 6, true);
-    case 'run': return blood ? f('t_stomp', 12, true) : f('run', 14, true);
+    case 'run': return blood ? f('t_run', 15, true) : f('run', 14, true);   // 暴走跑得快 1.25 倍，步频跟着提
     case 'jump': return blood ? ['t_idle', 0] : ['jump', p.vy < -150 ? 2 : 3];
     case 'djump': return blood ? ['t_idle', 0] : f('djump', 10, false);
     case 'fall': return blood ? ['t_idle', 0] : ['jump', 4];
