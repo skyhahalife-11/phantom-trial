@@ -41,8 +41,8 @@ function hound(x, extra = {}) {
 const dummy = (x, extra = {}) => hound(x, { st: 'stun', stunT: 99, hp: 600, ...extra });
 // 新敌人：直接摆状态（spawnEnemy 在闭包里拿不到）
 function foe(type, x, extra = {}) {
-  const hp = { skel: 30, ghost: 40, wiz: 40 }[type];
-  return hound(x, { type, hp, maxHp: hp, cd: 0, st: { skel: 'chase', ghost: 'drift', wiz: 'idle' }[type], skin: 'skel', ...extra });
+  const hp = { skel: 30, ghost: 40, wiz: 40, boss: 1400 }[type];
+  return hound(x, { type, hp, maxHp: hp, cd: 0, st: { skel: 'chase', ghost: 'drift', wiz: 'idle', boss: 'idle' }[type], skin: 'skel', sub: 0, sumT: 0, boss: type === 'boss', ...extra });
 }
 function step(sec, press) {
   for (let i = 0; i < Math.round(sec * 60); i++) {
@@ -277,6 +277,44 @@ function toBlood(r, sec = 10) { r.p.form = 'blood'; r.p.rage = r.p.rageMax = sec
   r.eshots.push({ x: r.p.x + 30, y: r.p.y - 18, vx: -170, vy: 0, t: 0, refl: false });
   step(0.02, 'dodge');
   check('火球 完美闪避', r.witch > 0, `断裂 ${r.witch.toFixed(2)}`);
+}
+
+// 18 Boss：霸体；冲撞打中；冲撞末尾冲刺 = 完美闪避；破绽受伤 +25%；天降砸在主角身边；半血狂怒召唤；击败结算
+{
+  const r = fresh();
+  const b = foe('boss', 330, { st: 'recover', recT: 99 });
+  step(0.02, 's1'); step(0.4);   // 突刺打一下，看霸体
+  check('Boss 霸体：不进眩晕 / 浮空', b.st === 'recover' && b.ground, b.st);
+  const hp0 = b.hp; r.p.cd = { u: 0, i: 0, o: 0 }; r.p.x = 290; r.p.face = 1;
+  step(0.02, 'attack'); step(0.3);
+  check('Boss 破绽受伤 +25%', hp0 - b.hp === 13, `掉 ${hp0 - b.hp}`);   // 普攻第一段 10 × 1.25 → 13
+}
+{
+  const r = fresh();
+  const b = foe('boss', 330, { st: 'charge', sub: 0, t: 0, face: -1 });
+  const hp0 = r.p.hp; step(1.2);
+  check('Boss 冲撞打中', r.p.hp < hp0, `掉 ${hp0 - r.p.hp}`);
+  const r2 = fresh();
+  foe('boss', 330, { st: 'charge', sub: 0, t: 0.6, face: -1 });
+  step(0.02, 'dodge');
+  check('Boss 冲撞前摇末尾冲刺 = 完美闪避', r2.witch > 0, `断裂 ${r2.witch.toFixed(2)}`);
+}
+{
+  const r = fresh();
+  const b = foe('boss', 500, { st: 'dive', sub: 0, t: 0, face: -1 });
+  step(0.45 + 0.95);
+  check('Boss 天降追到主角头顶', Math.abs(b.x - r.p.x) < 20, `Boss ${b.x.toFixed(0)} 主角 ${r.p.x.toFixed(0)}`);
+  const hp0 = r.p.hp; step(0.6);
+  check('Boss 天降砸中', r.p.hp < hp0 && b.st === 'recover', `掉 ${hp0 - r.p.hp} st ${b.st}`);
+}
+{
+  const r = fresh();
+  const b = foe('boss', 600, { hp: 700, st: 'idle', t: 9 });
+  step(0.5);
+  check('Boss 半血狂怒并召唤骷髅', b.p2 && r.en.filter((e) => e.type === 'skel').length === 3, `p2 ${b.p2} 骷髅 ${r.en.filter((e) => e.type === 'skel').length}`);
+  b.hp = 5; b.st = 'recover'; b.recT = 99; r.p.x = b.x - 40; r.p.face = 1;
+  step(0.02, 'attack'); step(0.3);
+  check('击败 Boss：结算并清掉召唤物', !r.en.includes(b) && r.msg && r.msg.text.includes('击败'), r.msg && r.msg.text);
 }
 
 console.log(fails ? `\n${fails} 项失败` : '\n全部通过');

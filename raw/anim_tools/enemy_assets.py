@@ -40,3 +40,8 @@ for nm, n in [('ghost-appears', 6), ('ghost-idle', 7), ('ghost-shriek', 4), ('gh
 strip(W + '/wizard/idle-sprites/*.png', 'wiz-idle')
 strip(W + '/wizard/fire-sprites/*.png', 'wiz-fire')
 strip(W + '/fx/fireball/fireball-sprites/*.png', 'fireball')
+# Boss 墓渊魔：待机 6 帧 160x144、出招 8 帧 192x176（不带火）、吐息火焰 5 帧 160x96（橙色版）
+D = f'{P}/demon-Files/PNG'
+copy(f'{D}/demon-idle.png', 'boss-idle', 6)
+copy(f'{D}/demon-attack-no-breath.png', 'boss-atk', 8)
+copy(f'{D}/breath-fire.png', 'boss-fire', 5)

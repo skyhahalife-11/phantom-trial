@@ -73,9 +73,18 @@ const SKEL = { hp: 30, dmg: 10, walk: 52, reach: 46, windup: 0.6, lungeV: 150, l
 const GHOST = { hp: 40, dmg: 12, drift: 55, sight: 300, cd: 2.6, vanish: 0.5, hidden: 0.35, appear: 0.43, behind: 46, windup: 0.6, shriek: 0.3, radius: 58, hover: 16 };
 // 火焰巫师：站在高台上远程丢火球；手里聚火就是预警。普攻打中火球会把它反弹回去
 const WIZ = { hp: 40, dmg: 12, sight: 400, cd: 2.4, castFps: 10, release: 6, ballV: 170, ballLife: 3.5, reflectV: 340, reflectDmg: 24 };
-const EBOX = { hound: [18, 24], skel: [11, 40], ghost: [12, 40], wiz: [12, 42] };   // 受击框：半宽、高
-const EMAX = { hound: HOUND.hp, skel: SKEL.hp, ghost: GHOST.hp, wiz: WIZ.hp };
-const ETOP = { hound: 30, skel: 46, ghost: 50, wiz: 50 };   // 血条 / 预警 / 眩晕星画在脚底往上多少
+// 墓渊魔：大房间第一个 Boss。三招都有明显前摇、都能完美闪避；出完招有破绽（受伤 +25%）；
+// 霸体（不被击退 / 挑飞 / 眩晕 / 抓取）；半血后狂怒：前摇缩短到 0.8 倍，并定期召唤骷髅
+const BOSS = {
+  hp: 1400, name: '墓渊魔', wave: 4, walk: 70, near: 110, gap: 0.9, gap2: 0.55, weak: 1.25, phase2: 0.5, fast: 0.8,
+  charge: { windup: 0.7, v: 380, t: 0.4, dmg: 18, recover: 0.9 },
+  breath: { crouch: 0.35, rear: 0.5, fire: 0.5, dmg: 16, recover: 0.8, reach: 136 },
+  dive: { rise: 0.45, h: 230, track: 0.9, fall: 900, dmg: 22, radius: 70, recover: 1.0 },
+  summon: { cd: 14, t: 0.9, n: 3 },
+};
+const EBOX = { hound: [18, 24], skel: [11, 40], ghost: [12, 40], wiz: [12, 42], boss: [30, 96] };   // 受击框：半宽、高
+const EMAX = { hound: HOUND.hp, skel: SKEL.hp, ghost: GHOST.hp, wiz: WIZ.hp, boss: BOSS.hp };
+const ETOP = { hound: 30, skel: 46, ghost: 50, wiz: 50, boss: 118 };   // 血条 / 预警 / 眩晕星画在脚底往上多少
 const etype = (e) => e.type || 'hound';
 
 /* 地面 500；四层平台每层高 64，单跳 65 像素、二段跳合计约 115 像素 */
@@ -107,7 +116,7 @@ function rReset() {
   };
   R.cam = { x: 0, y: ROOM.h - RB_H };
   R.en = []; R.fx = []; R.nums = []; R.cuts = []; R.blade = null; R.shots = []; R.drops = []; R.rain = null; R.rcombo = 0; R.shade = null; R.eshots = [];
-  R.wave = 0; R.kills = 0; R.waveT = 1.2;
+  R.wave = params.get('boss') ? BOSS.wave - 1 : 0; R.kills = 0; R.waveT = 1.2;   // boss=1：调试用，开局直接打 Boss
   R.stop = 0; R.shake = 0; R.witch = Number(params.get('witch')) || 0; R.banner = 0;   // witch=秒：调试用，开局直接进时空断裂
   R.msg = null; R.cutin = null; R.soulWarn = 0; R.flash = 0; R.afterT = 0;
   R.time = 0; R.dead = false;
@@ -264,6 +273,7 @@ function strike(e, dmg, o = {}) {
   if (e.st === 'dead' || e.hide) return;
   const crit = !!o.critStun && e.st === 'stun';
   if (crit) dmg *= 2;
+  if (e.boss && e.st === 'recover') dmg *= BOSS.weak;   // Boss 破绽
   if (o.basic && e.mark > 0) gainSoul(SOUL_HIT);
   if (o.mark) e.mark = o.mark;
   if (o.skill) noteLink(o.skill);
@@ -764,7 +774,7 @@ function startMaul(p) {
   const e = alive().filter((o) => overlap(box, eBox(o))).sort((a, b) => Math.abs(a.x - p.x) - Math.abs(b.x - p.x))[0];
   setSt(p, 'tmaul'); p.vx = 0;
   p.maul = e ? { e, i: 0, t: 0 } : null;
-  if (e) { strike(e, TSK.maulDmg, {}); if (e.st !== 'dead') { e.st = 'carried'; e.t = 0; p.maul.side0 = p.face; } else p.maul = null; }
+  if (e) { strike(e, TSK.maulDmg, {}); if (e.st !== 'dead' && !e.boss) { e.st = 'carried'; e.t = 0; p.maul.side0 = p.face; } else p.maul = null; }
   const cx0 = e ? e.x : p.x + p.face * 40;   // 地底血爪从敌人脚下破土
   vfx('claw_up', cx0, p.y, { ground: true, flip: p.face < 0 });
   burst(cx0, p.y - 2, 10, { col: 'stone', a0: Math.PI, a1: Math.PI * 2, v1: 140 });
@@ -863,6 +873,7 @@ function enemyDanger(e, p, pb, win, near) {
     case 'hound': return (e.st === 'leap' && overlap(pb, leapBox(e))) || (e.st === 'windup' && e.t > HOUND.windup - win && near);
     case 'skel': return (e.st === 'lunge' && overlap(pb, skelBox(e))) || (e.st === 'windup' && e.t > SKEL.windup - win && near);
     case 'ghost': return (e.st === 'shriek' && overlap(pb, shriekBox(e))) || (e.st === 'windup' && e.t > GHOST.windup - win && overlap(pb, shriekBox(e, 20)));
+    case 'boss': return bossDanger(e, p, pb, win);
   }
   return false;
 }
@@ -896,6 +907,7 @@ function hurtEnemy(e, dmg, kb, launch, o = {}) {
   R.nums.push({ x: e.x + rnd(-10, 10), y: e.y - 34 - rnd(0, 8), v: dmg, c: o.crit ? '#ffd23a' : '#fff2c0', big: o.crit, t: 0 });   // 抖开，挤在一起的敌人数字不糊成一团
   vfx('hit_' + tint(), e.x + rnd(-4, 4), e.y - 14 + rnd(-4, 4), { rot: rnd(0, 6.28) });
   if (o.crit) vfx('exp1_' + tint(), e.x, e.y - 16);
+  if (e.hp <= 0 && e.boss) { bossDown(e); return; }
   if (e.hp <= 0) {
     e.st = 'dead'; R.kills++;
     R.fx.push({ k: 'death', x: e.x, y: e.y, t: 0 });
@@ -903,6 +915,7 @@ function hurtEnemy(e, dmg, kb, launch, o = {}) {
     if (R.p.form === 'blood') R.p.rage = Math.min(R.p.rageMax, R.p.rage + RAGE.killAdd);   // 暴走中越杀越久
     return;
   }
+  if (e.boss) return;   // 霸体
   e.vx = kb;
   if (launch) { e.vy = launch; e.ground = false; e.st = 'air'; e.t = 0; }
   else if (e.st === 'air') { e.vy = Math.min(e.vy, -120); }
@@ -948,8 +961,9 @@ function enemyUpdate(e, p, dt) {
   else if (T === 'skel') skelAI(e, p, dt);
   else if (T === 'ghost') ghostAI(e, p, dt);
   else if (T === 'wiz') wizAI(e, p, dt);
+  else if (T === 'boss') bossAI(e, p, dt);
   if (e.st === 'dead' || e.st === 'carried') return;
-  if (T === 'ghost') floatPhys(e, dt);
+  if (T === 'ghost' || bossFlying(e)) floatPhys(e, dt);
   else groundPhys(e, dt);
 }
 
@@ -1072,6 +1086,124 @@ function wizAI(e, p, dt) {
   }
 }
 
+/* ---------- Boss：墓渊魔 ---------- */
+const bossF = (e) => (e.p2 ? BOSS.fast : 1);   // 狂怒后前摇倍率
+const bossFlying = (e) => e.boss && e.st === 'dive' && e.sub < 2;
+const bossBody = (e, pad = 0) => ({ x0: e.x + e.face * 10 - 34 - pad, x1: e.x + e.face * 10 + 34 + pad, y0: e.y - 96, y1: e.y });
+const breathBox = (e, pad = 0) => {
+  const a = e.x + e.face * 16, b = e.x + e.face * (BOSS.breath.reach + pad);
+  return { x0: Math.min(a, b), x1: Math.max(a, b), y0: e.y - 64, y1: e.y + 4 };
+};
+const diveBox = (e, pad = 0) => ({ x0: e.x - BOSS.dive.radius - pad, x1: e.x + BOSS.dive.radius + pad, y0: e.y - 70, y1: e.y + 6 });
+function spawnBoss() {
+  const x = clamp(R.p.x + 240, 200, ROOM.w - 200);
+  const e = spawnEnemy('boss', x, ROOM.ground, { boss: true, st: 'intro', sub: 0, face: sign(R.p.x - x), sumT: 0 });
+  say(`${BOSS.name}　降临`, '#ff6a6a');
+  R.shake = 5; R.flash = 0.15; R.flashCol = '255,60,70'; buzz(80);
+  burst(e.x, e.y - 4, 40, { col: 'stone', a0: Math.PI, a1: Math.PI * 2, v1: 260 });
+  return e;
+}
+function bossDanger(e, p, pb, win) {
+  const B = BOSS, f = bossF(e);
+  if (e.st === 'charge') return e.sub === 1 ? overlap(pb, bossBody(e, 20)) : e.t > B.charge.windup * f - win && Math.abs(p.x - e.x) < 170 && Math.abs(p.y - e.y) < 60;
+  if (e.st === 'breath') return e.sub === 1 ? overlap(pb, breathBox(e)) : e.t > (B.breath.crouch + B.breath.rear) * f - win && overlap(pb, breathBox(e, 20));
+  if (e.st === 'dive') return e.sub === 2 && overlap(pb, diveBox(e, 16));
+  return false;
+}
+function bossIdle(e) { e.st = 'idle'; e.t = 0; e.sub = 0; }
+function bossRecover(e, t) { e.st = 'recover'; e.t = 0; e.recT = t; e.vx = 0; }
+function bossStart(e, st) { e.st = st; e.t = 0; e.sub = 0; e.vx = 0; e.dodged = false; e.buzzed = false; e.hitPlayer = false; }
+// 选招：同一层且贴近 → 吐息 / 冲撞；离得远或不在同一层 → 天降 / 冲撞；狂怒后定期召唤
+function bossPick(e, p) {
+  const adx = Math.abs(p.x - e.x), same = Math.abs(p.y - e.y) < 40;
+  if (e.p2 && e.sumT <= 0) return bossStart(e, 'summon');
+  e.face = sign(p.x - e.x) || e.face;
+  const r = Math.random();
+  if (same && adx < 150) bossStart(e, r < 0.6 ? 'breath' : 'charge');
+  else if (same && adx < 320) bossStart(e, r < 0.5 ? 'charge' : 'dive');
+  else bossStart(e, 'dive');
+}
+function bossAI(e, p, dt) {
+  const B = BOSS, f = bossF(e), dx = p.x - e.x;
+  e.sumT -= dt;
+  if (!e.p2 && e.hp <= e.maxHp * B.phase2) { e.p2 = true; e.sumT = 0; say(`${B.name}　狂怒`, '#ff6a6a'); R.shake = 4; }
+  switch (e.st) {
+    case 'intro':
+      e.vx = 0;
+      if (e.t >= 1.2) bossIdle(e);
+      break;
+    case 'idle':
+      e.face = sign(dx) || e.face;
+      e.vx = Math.abs(dx) > B.near ? e.face * B.walk : 0;
+      if (e.t >= (e.p2 ? B.gap2 : B.gap) && !R.dead) bossPick(e, p);
+      break;
+    case 'charge':   // 伏低蓄力 → 冲撞
+      if (e.sub === 0) {
+        e.vx = 0;
+        tellBuzz(e, p, B.charge.windup * f);
+        if (e.t >= B.charge.windup * f) { e.sub = 1; e.t = 0; e.vx = e.face * B.charge.v; }
+      } else {
+        enemyHits(e, p, bossBody(e), B.charge.dmg);
+        if (e.t >= B.charge.t) bossRecover(e, B.charge.recover);
+      }
+      break;
+    case 'breath': {   // 伏低 → 展翅后仰（预警）→ 贴地喷火
+      const wind = (B.breath.crouch + B.breath.rear) * f;
+      if (e.sub === 0) {
+        e.vx = 0;
+        tellBuzz(e, p, wind);
+        if (e.t >= wind) { e.sub = 1; e.t = 0; R.shake = Math.max(R.shake, 2); }
+      } else {
+        if (e.t > 0.08 && e.t < B.breath.fire - 0.1) enemyHits(e, p, breathBox(e), B.breath.dmg);
+        if (e.t >= B.breath.fire) bossRecover(e, B.breath.recover);
+      }
+      break;
+    }
+    case 'dive':   // 飞起 → 盯着主角（地上红圈）→ 砸下震地
+      if (e.sub === 0) {
+        e.vx = 0; e.vy = -B.dive.h / B.dive.rise;
+        if (e.t >= B.dive.rise) { e.sub = 1; e.t = 0; e.vy = 0; }
+      } else if (e.sub === 1) {
+        e.vy = 0;
+        e.x += (p.x - e.x) * Math.min(1, dt * 5);
+        e.face = sign(dx) || e.face;
+        e.markY = p.ground ? p.y : e.markY ?? ROOM.ground;
+        tellBuzz(e, p, B.dive.track * f);
+        if (e.t >= B.dive.track * f) { e.sub = 2; e.t = 0; e.vy = B.dive.fall; }
+      } else if (e.ground) {
+        enemyHits(e, p, diveBox(e), B.dive.dmg);
+        R.shake = 6; R.stop = Math.max(R.stop, 0.05); buzz(60);
+        for (const k of [-1, 0, 1]) vfx('exp2_blood', e.x + k * 44, e.y + 4, { ground: true, delay: Math.abs(k) * 0.05 });
+        burst(e.x, e.y - 4, 50, { col: 'stone', a0: Math.PI, a1: Math.PI * 2, v1: 300 });
+        bossRecover(e, B.dive.recover);
+      }
+      break;
+    case 'summon':   // 后仰召唤：主角身边的地里爬出骷髅
+      e.vx = 0;
+      if (e.sub === 0 && e.t >= 0.4) {
+        e.sub = 1; e.sumT = B.summon.cd;
+        for (let k = 0; k < B.summon.n; k++) spawnEnemy('skel', clamp(p.x + (k - 1) * 70 + 35, 40, ROOM.w - 40), ROOM.ground);
+        R.shake = 3;
+      }
+      if (e.t >= B.summon.t) bossIdle(e);
+      break;
+    case 'recover':   // 破绽
+      e.vx *= Math.pow(0.001, dt);
+      if (e.t >= e.recT) bossIdle(e);
+      break;
+  }
+}
+function bossDown(e) {
+  e.st = 'dead'; R.kills++;
+  R.stop = 0.35; R.shake = 8; R.flash = 0.15; R.flashCol = '255,220,160'; buzz(120);
+  for (let k = 0; k < 5; k++) vfx('exp2_blood', e.x + rnd(-40, 40), e.y - rnd(10, 90), { delay: k * 0.08 });
+  burst(e.x, e.y - 50, 120, { col: 'stone', v1: 360, life: 1.1 });
+  R.fx.push({ k: 'death', x: e.x, y: e.y, t: 0 });
+  say(`击败 ${BOSS.name}`, '#ffd23a');
+  R.waveT = 4;
+  for (const o of R.en) if (o !== e && o.type === 'skel') hurtEnemy(o, o.hp, 0, -200);   // 召来的骷髅一起散架
+}
+
 /* 火球：朝主角当前位置直线飞；普攻打中会反弹，反弹后专打敌人 */
 function fireball(e, p) {
   const x = e.x + e.face * 16, y = e.y - 36, tx = p.x, ty = p.y - 18, d = Math.hypot(tx - x, ty - y) || 1;
@@ -1126,12 +1258,12 @@ const WAVES = [
   ['skel', 'skel', 'skel', 'hound'],
   ['hound', 'skel', 'skel', 'wiz', 'wiz'],
   ['ghost', 'skel', 'skel', 'skel', 'hound', 'wiz'],
-  ['ghost', 'ghost', 'wiz', 'hound', 'hound', 'skel', 'skel'],
-];
+];   // 第 4 波是 Boss，之后混编
 const MIX = ['skel', 'hound', 'skel', 'ghost', 'wiz', 'skel', 'hound'];
 function spawnWave() {
   R.wave++;
-  const list = WAVES[R.wave - 1] || Array.from({ length: 4 + Math.min(R.wave, 8) }, (_, i) => MIX[(i + R.wave) % MIX.length]);
+  if (R.wave === BOSS.wave) { spawnBoss(); return; }
+  const list = WAVES[R.wave - 1] || Array.from({ length: 2 + Math.min(R.wave, 8) }, (_, i) => MIX[(i + R.wave) % MIX.length]);
   list.forEach((type, i) => {
     const pl = ROOM.plats[(i * 3 + R.wave) % ROOM.plats.length];
     if (type === 'wiz') {   // 巫师站高台
@@ -1251,6 +1383,7 @@ const EANIM = {   // 帧数、帧宽、帧高
   'skel-atk': [4, 50, 47, 21], 'skelc-atk': [4, 50, 47, 21],   // 第 4 个数：锚点（脚下）在帧内的 x，缺省取帧中心
   'ghost-idle': [7, 64, 80], 'ghost-appears': [6, 64, 48], 'ghost-shriek': [4, 64, 80], 'ghost-vanish': [7, 64, 64],
   'wiz-idle': [5, 81, 66], 'wiz-fire': [10, 81, 66], fireball: [3, 26, 26],
+  'boss-idle': [6, 160, 144, 62, 127], 'boss-atk': [8, 192, 176, 87, 168], 'boss-fire': [5, 160, 96],   // 第 5 个数：脚底在帧内的 y
 };
 function enemyFrame(e) {
   const run = (n, fps) => Math.floor(e.an * fps) % n, once = (n, fps) => Math.min(n - 1, Math.floor(e.t * fps));
@@ -1274,19 +1407,35 @@ function enemyFrame(e) {
     case 'wiz':
       if (e.st === 'cast') return ['wiz-fire', once(10, WIZ.castFps)];
       return ['wiz-idle', run(5, 8)];
+    case 'boss': {
+      const f = bossF(e);
+      if (e.st === 'charge') return ['boss-atk', e.sub === 0 ? Math.min(2, Math.floor(e.t / (BOSS.charge.windup * f) * 3)) : 3 + (Math.floor(e.t * 12) % 2)];
+      if (e.st === 'breath') return ['boss-atk', e.sub === 1 ? 7 : e.t < BOSS.breath.crouch * f ? Math.min(2, Math.floor(e.t / (BOSS.breath.crouch * f) * 3)) : 6];
+      if (e.st === 'dive') return e.sub === 2 ? ['boss-atk', 6] : ['boss-idle', run(6, 14)];
+      if (e.st === 'summon') return ['boss-atk', 6 + (Math.floor(e.t * 8) % 2)];
+      if (e.st === 'recover') return ['boss-atk', 5];
+      return ['boss-idle', run(6, 8)];
+    }
   }
   return null;
 }
-const EWIND = { skel: () => SKEL.windup, ghost: () => GHOST.windup, wiz: () => WIZ.release / WIZ.castFps };
-function enemyTelling(e) { return e.st === 'windup' || (e.st === 'cast' && !e.fired); }
+const EWIND = {
+  skel: () => SKEL.windup, ghost: () => GHOST.windup, wiz: () => WIZ.release / WIZ.castFps,
+  boss: (e) => bossF(e) * (e.st === 'charge' ? BOSS.charge.windup : e.st === 'breath' ? BOSS.breath.crouch + BOSS.breath.rear : BOSS.dive.track),
+};
+function enemyTelling(e) {
+  if (e.boss) return ['charge', 'breath'].includes(e.st) ? e.sub === 0 : e.st === 'dive' && e.sub === 1;
+  return e.st === 'windup' || (e.st === 'cast' && !e.fired);
+}
 function drawEnemy(e, cx, cy) {
   const T = etype(e);
   if (T === 'hound') return drawHound(e, cx, cy);
   const fr = enemyFrame(e);
   if (!fr) return;
-  const [name, i] = fr, [, fw, fh, ax = fw / 2] = EANIM[name], im = rImg(`gv/enemies/${name}.png`);
+  const [name, i] = fr, [, fw, fh, ax = fw / 2, ay = fh] = EANIM[name], im = rImg(`gv/enemies/${name}.png`);
   if (!ready(im)) return;
-  const bx = Math.round(e.x - cx), by = Math.round(e.y - cy), win = EWIND[T](), tell = enemyTelling(e);
+  const bx = Math.round(e.x - cx), by = Math.round(e.y - cy), win = EWIND[T](e), tell = enemyTelling(e);
+  if (T === 'boss' && e.st === 'dive' && e.sub === 1) drawDiveMark(e, bx, Math.round((e.markY ?? ROOM.ground) - cy), win);
   rx.save();
   rx.translate(bx, by + 1);
   if (e.face > 0) rx.scale(-1, 1);   // 素材都朝左
@@ -1295,8 +1444,14 @@ function drawEnemy(e, cx, cy) {
     rx.filter = k > 0.72 ? 'brightness(2.6)' : `sepia(1) saturate(6) hue-rotate(-30deg) brightness(${1 + 0.6 * Math.abs(Math.sin(e.t * 18))})`;
   } else if (e.flash > 0) rx.filter = 'brightness(3)';
   else if (T === 'ghost') rx.filter = 'brightness(1.5) drop-shadow(0 0 2px rgba(120,220,255,0.9))';   // 黑袍贴着暗背景看不清，描一圈青光
-  rx.drawImage(im, i * fw, 0, fw, fh, -ax, -fh, fw, fh);
+  else if (T === 'boss') rx.filter = e.st === 'recover' ? 'brightness(1.4) drop-shadow(0 0 3px rgba(255,220,120,0.95))' : 'brightness(1.3) drop-shadow(0 0 2px rgba(255,60,70,0.9))';   // 黑身子描红边；破绽时描金边
+  rx.drawImage(im, i * fw, 0, fw, fh, -ax, -ay, fw, fh);
+  if (T === 'boss' && e.st === 'breath' && e.sub === 1) {   // 贴地喷火：火焰条右端接在嘴边
+    const fim = rImg('gv/enemies/boss-fire.png'), k = Math.min(4, Math.floor(e.t / BOSS.breath.fire * 5));
+    if (ready(fim)) rx.drawImage(fim, k * 160, 0, 160, 96, -139, -72, 160, 96);
+  }
   rx.restore();
+  if (T === 'boss') { drawBossTell(e, bx, by, tell, win); return; }
   const top = ETOP[T];
   if (T === 'skel' && e.st === 'windup') {   // 地上一道闪烁的红线：前扑会扑到哪
     rx.fillStyle = e.t > SKEL.windup * 0.72 ? 'rgba(255,255,255,0.8)' : `rgba(255,50,50,${0.35 + 0.3 * Math.abs(Math.sin(e.t * 18))})`;
@@ -1319,6 +1474,21 @@ function drawEnemy(e, cx, cy) {
     rx.fillStyle = '#1a0f14'; rx.fillRect(bx - hpW / 2, by - top, hpW, 3);
     rx.fillStyle = '#d0384a'; rx.fillRect(bx - hpW / 2, by - top, Math.round(hpW * e.hp / e.maxHp), 3);
   }
+}
+// Boss 头顶预警（同小怪：红 → 最后 28% 白）；血条画在 HUD 上
+function drawBossTell(e, bx, by, tell, win) {
+  if (!tell) return;
+  rx.fillStyle = e.t > win * 0.72 ? '#fff' : '#ff3a2a';
+  rx.fillRect(bx - 2, by - 136, 5, 10); rx.fillRect(bx - 2, by - 123, 5, 4);
+}
+// 天降：落点一圈闪烁的红色地标，最后 28% 闪白
+function drawDiveMark(e, bx, gy, win) {
+  const k = e.t / win, r = BOSS.dive.radius;
+  rx.strokeStyle = k > 0.72 ? 'rgba(255,255,255,0.9)' : `rgba(255,50,60,${0.45 + 0.35 * Math.abs(Math.sin(e.t * 16))})`;
+  rx.lineWidth = 2;
+  rx.beginPath(); rx.ellipse(bx, gy, r, 8, 0, 0, Math.PI * 2); rx.stroke();
+  rx.fillStyle = 'rgba(255,40,50,0.18)';
+  rx.beginPath(); rx.ellipse(bx, gy, r * Math.min(1, k), 8 * Math.min(1, k), 0, 0, Math.PI * 2); rx.fill();
 }
 function drawFireballs(cx, cy) {
   const im = rImg('gv/enemies/fireball.png');
@@ -1792,6 +1962,12 @@ const roomScene = {
     // 触屏时右上角是返回/设置键，波次挪到顶部中间
     if (tc) drawText(`第 ${R.wave} 波　击杀 ${R.kills}`, VW / 2, 40, 24, '#c8bcd8', 'center');
     else drawText(`第 ${R.wave} 波　击杀 ${R.kills}`, VW - 24, 40, 24, '#c8bcd8', 'right');
+    const boss = R.en.find((e) => e.boss && e.st !== 'dead');
+    if (boss) {
+      pxBar(VW / 2 - 240, 62, 480, 14, boss.hp / boss.maxHp, boss.p2 ? '#ff3a4a' : '#c03040');
+      drawText(BOSS.name, VW / 2 - 256, 78, 24, '#ffb0b8', 'right');
+      if (boss.st === 'recover') drawText('破绽', (boss.x - cx) * RB_S, (boss.y - 128 - cy) * RB_S, 36, '#ffd23a', 'center');
+    }
     if (R.banner > 0) drawText('时空断裂', VW / 2, 140, 48, `rgba(160,225,255,${clamp(R.banner, 0, 1)})`, 'center');
     if (R.witch > 0) {
       pxBar(VW / 2 - 120, 160, 240, 8, R.witch / WITCH_T, '#8fd8ff');
