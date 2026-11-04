@@ -68,7 +68,7 @@ const HOUND = {
   anim: { idle: [6, 64, 32], walk: [12, 64, 32], run: [5, 67, 32], jump: [6, 65, 48] },
 };
 // 骷髅兵：从土里爬出来，慢慢逼近，贴脸后仰一下再前扑抓一把；血少，成群出现
-const SKEL = { hp: 30, dmg: 10, walk: 52, reach: 46, windup: 0.5, lungeV: 210, lungeT: 0.2, recover: 0.6, rise: 0.6 };
+const SKEL = { hp: 30, dmg: 10, walk: 52, reach: 46, windup: 0.6, lungeV: 150, lungeT: 0.2, recover: 0.6, rise: 0.6 };
 // 幽灵：飘着穿过平台；隐身（抓不到）→ 在主角背后现身 → 蓄力尖啸，打一圈
 const GHOST = { hp: 40, dmg: 12, drift: 55, sight: 300, cd: 2.6, vanish: 0.5, hidden: 0.35, appear: 0.43, behind: 46, windup: 0.6, shriek: 0.3, radius: 58, hover: 16 };
 // 火焰巫师：站在高台上远程丢火球；手里聚火就是预警。普攻打中火球会把它反弹回去
@@ -1248,6 +1248,7 @@ function drawHound(e, cx, cy) {
 /* 新敌人：选帧 → 画精灵（蓄力时变红、最后 28% 闪白）→ 头顶预警 / 眩晕星 / 墓志 / 血条 */
 const EANIM = {   // 帧数、帧宽、帧高
   'skel-walk': [8, 44, 52], 'skel-rise': [6, 44, 52], 'skelc-walk': [8, 44, 52], 'skelc-rise': [6, 44, 52],
+  'skel-atk': [4, 50, 47, 21], 'skelc-atk': [4, 50, 47, 21],   // 第 4 个数：锚点（脚下）在帧内的 x，缺省取帧中心
   'ghost-idle': [7, 64, 80], 'ghost-appears': [6, 64, 48], 'ghost-shriek': [4, 64, 80], 'ghost-vanish': [7, 64, 64],
   'wiz-idle': [5, 81, 66], 'wiz-fire': [10, 81, 66], fireball: [3, 26, 26],
 };
@@ -1258,8 +1259,9 @@ function enemyFrame(e) {
       const k = e.skin || 'skel';
       if (e.st === 'rise') return [k + '-rise', once(6, 6 / SKEL.rise)];
       if (e.st === 'chase') return [k + '-walk', run(8, 10)];
-      if (e.st === 'windup') return [k + '-walk', 4];
-      if (e.st === 'lunge') return [k + '-walk', 0];
+      if (e.st === 'windup') return [k + '-atk', e.t < SKEL.windup * 0.5 ? 0 : 1];   // 举爪 → 后仰蓄力
+      if (e.st === 'lunge') return [k + '-atk', 2];
+      if (e.st === 'recover' && e.t < 0.3) return [k + '-atk', 3];
       return [k + '-walk', 2];
     }
     case 'ghost':
@@ -1282,7 +1284,7 @@ function drawEnemy(e, cx, cy) {
   if (T === 'hound') return drawHound(e, cx, cy);
   const fr = enemyFrame(e);
   if (!fr) return;
-  const [name, i] = fr, [, fw, fh] = EANIM[name], im = rImg(`gv/enemies/${name}.png`);
+  const [name, i] = fr, [, fw, fh, ax = fw / 2] = EANIM[name], im = rImg(`gv/enemies/${name}.png`);
   if (!ready(im)) return;
   const bx = Math.round(e.x - cx), by = Math.round(e.y - cy), win = EWIND[T](), tell = enemyTelling(e);
   rx.save();
@@ -1293,9 +1295,13 @@ function drawEnemy(e, cx, cy) {
     rx.filter = k > 0.72 ? 'brightness(2.6)' : `sepia(1) saturate(6) hue-rotate(-30deg) brightness(${1 + 0.6 * Math.abs(Math.sin(e.t * 18))})`;
   } else if (e.flash > 0) rx.filter = 'brightness(3)';
   else if (T === 'ghost') rx.filter = 'brightness(1.5) drop-shadow(0 0 2px rgba(120,220,255,0.9))';   // 黑袍贴着暗背景看不清，描一圈青光
-  rx.drawImage(im, i * fw, 0, fw, fh, -fw / 2, -fh, fw, fh);
+  rx.drawImage(im, i * fw, 0, fw, fh, -ax, -fh, fw, fh);
   rx.restore();
   const top = ETOP[T];
+  if (T === 'skel' && e.st === 'windup') {   // 地上一道闪烁的红线：前扑会扑到哪
+    rx.fillStyle = e.t > SKEL.windup * 0.72 ? 'rgba(255,255,255,0.8)' : `rgba(255,50,50,${0.35 + 0.3 * Math.abs(Math.sin(e.t * 18))})`;
+    rx.fillRect(e.face > 0 ? bx : bx - 40, by - 1, 40, 2);
+  }
   if (tell) {
     rx.fillStyle = e.t > win * 0.72 ? '#fff' : '#ff3a2a';
     rx.fillRect(bx - 1, by - top - 18, 3, 6); rx.fillRect(bx - 1, by - top - 10, 3, 3);

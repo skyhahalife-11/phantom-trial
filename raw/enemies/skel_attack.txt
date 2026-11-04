@@ -1,0 +1,11 @@
+Pixel art sprite sheet for a 2D side-scrolling action game. The reference image shows an existing walking skeleton enemy in two variants: row 1 a bare skeleton, row 2 the same skeleton wearing tattered red rags. Draw the SAME skeleton design, same pixel art style, same palette (brownish bone tones, dark outline), same proportions, facing LEFT exactly like the reference.
+
+New animation: a CLAW LUNGE ATTACK, animated like classic 2D arcade fighting game sprites: extremely clear, exaggerated poses that a player can read instantly.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Row 1 is the bare skeleton, row 2 is the ragged red variant, both doing the same 4 frames:
+1. Windup start: leaning far BACK, both bony arms raised high above the head, claws spread, jaw wide open (screeching).
+2. Windup peak: arched back even more, arms pulled back behind the head, one knee lifted, coiled like a spring about to snap.
+3. Lunge: whole body thrown FORWARD (to the left) in a long low lunge, both arms swiping down and forward with claws extended far in front, back leg fully stretched.
+4. Follow-through: crouched low and far forward, claws scraping near the ground in front, head down.
+
+Every frame: strict side view facing LEFT; identical character scale in every cell and the same as the reference; feet on the same ground line in each row; whole body inside the cell with margin. Crisp pixel art, hard-edged pixels, no anti-aliasing, no slash effects, no motion trails, no dust, no background objects, no text.

@@ -74,7 +74,7 @@ try:
           %s })()"""
         js(FOES % "mk('skel', 360, 500, { st: 'rise', t: 0.35 }); mk('skel', 420, 500, { st: 'chase', skin: 'skelc', hp: 20, maxHp: 30 }); mk('ghost', 500, 470, { st: 'drift', ground: false }); mk('wiz', 580, 436, { st: 'cast', t: 0.4 });")
         time.sleep(0.15); shot('e_idle')
-        js(FOES % "mk('skel', 336, 500, { st: 'windup', t: 0.25 }); mk('ghost', 262, 496, { st: 'windup', t: 0.2, ground: false, face: 1 }); mk('wiz', 580, 436, { st: 'idle', cd: 0 });")
+        js(FOES % "mk('skel', 336, 500, { st: 'windup', t: 0 }); mk('ghost', 262, 496, { st: 'windup', t: 0.2, ground: false, face: 1 }); mk('wiz', 580, 436, { st: 'idle', cd: 0 });")
         time.sleep(0.5); shot('e_tell')
         time.sleep(0.25); shot('e_attack')
         print(chr(10).join(logs) or 'no errors'); sys.exit(0)

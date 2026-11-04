@@ -241,7 +241,7 @@ function toBlood(r, sec = 10) { r.p.form = 'blood'; r.p.rage = r.p.rageMax = sec
   const hp0 = r.p.hp; step(0.7);
   check('骷髅 前扑打中', r.p.hp < hp0, `掉 ${hp0 - r.p.hp}`);
   const r2 = fresh();
-  foe('skel', 236, { st: 'windup', t: 0.42, face: -1 });
+  foe('skel', 236, { st: 'windup', t: 0.5, face: -1 });
   step(0.02, 'dodge');
   check('骷髅 蓄力末尾冲刺 = 完美闪避', r2.witch > 0, `断裂 ${r2.witch.toFixed(2)}`);
 }

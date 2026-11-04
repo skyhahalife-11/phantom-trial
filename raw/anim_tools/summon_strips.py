@@ -5,7 +5,6 @@ import sys, os, json, re
 import numpy as np
 from PIL import Image
 
-SRC, OUT = sys.argv[1], sys.argv[2]
 
 # 表名: (列, 行, 缩放, [(动画名, 帧序号, fps, 锚点)], 是否整张表共用裁剪框)
 SHEETS = {
@@ -54,23 +53,25 @@ def pixelize(f, s):
     return np.dstack([np.asarray(rgb), a[..., 3]])
 
 
-man_path = os.path.join(OUT, 'manifest.js')
-txt = open(man_path, encoding='utf-8').read()
-VFX = json.loads(re.search(r'window\.VFX = (\{.*\});', txt, re.S).group(1))
+if __name__ == '__main__':
+    SRC, OUT = sys.argv[1], sys.argv[2]
+    man_path = os.path.join(OUT, 'manifest.js')
+    txt = open(man_path, encoding='utf-8').read()
+    VFX = json.loads(re.search(r'window\.VFX = (\{.*\});', txt, re.S).group(1))
 
-for sheet, (cols, rows, s, groups, shared) in SHEETS.items():
-    cs = cells(keyed(os.path.join(SRC, sheet + '_1.png')), cols, rows)
-    ch, cw = cs[0].shape[:2]
-    common = bbox([cs[i] for _, idx, _, _ in groups for i in idx]) if shared else None
-    for name, idx, fps, anchor in groups:
-        x0, y0, x1, y1 = common or bbox([cs[i] for i in idx])
-        frames = [pixelize(cs[i][y0:y1, x0:x1], s) for i in idx]
-        fh, fw = frames[0].shape[:2]
-        strip = np.concatenate(frames, axis=1)
-        Image.fromarray(strip, 'RGBA').save(os.path.join(OUT, name + '.png'))
-        ax = round((cw / 2 - x0) * s) if anchor == 'ground' else fw // 2
-        ay = fh if anchor == 'ground' else fh // 2
-        VFX[name] = {'fw': fw, 'fh': fh, 'n': len(frames), 'fps': fps, 'ax': ax, 'ay': ay}
-        print(f'{name:12s} {fw}x{fh} n={len(frames)} anchor=({ax},{ay})')
+    for sheet, (cols, rows, s, groups, shared) in SHEETS.items():
+        cs = cells(keyed(os.path.join(SRC, sheet + '_1.png')), cols, rows)
+        ch, cw = cs[0].shape[:2]
+        common = bbox([cs[i] for _, idx, _, _ in groups for i in idx]) if shared else None
+        for name, idx, fps, anchor in groups:
+            x0, y0, x1, y1 = common or bbox([cs[i] for i in idx])
+            frames = [pixelize(cs[i][y0:y1, x0:x1], s) for i in idx]
+            fh, fw = frames[0].shape[:2]
+            strip = np.concatenate(frames, axis=1)
+            Image.fromarray(strip, 'RGBA').save(os.path.join(OUT, name + '.png'))
+            ax = round((cw / 2 - x0) * s) if anchor == 'ground' else fw // 2
+            ay = fh if anchor == 'ground' else fh // 2
+            VFX[name] = {'fw': fw, 'fh': fh, 'n': len(frames), 'fps': fps, 'ax': ax, 'ay': ay}
+            print(f'{name:12s} {fw}x{fh} n={len(frames)} anchor=({ax},{ay})')
 
-open(man_path, 'w', encoding='utf-8').write('window.VFX = ' + json.dumps(VFX, ensure_ascii=False) + ';\n')
+    open(man_path, 'w', encoding='utf-8').write('window.VFX = ' + json.dumps(VFX, ensure_ascii=False) + ';\n')
