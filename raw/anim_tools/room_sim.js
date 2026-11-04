@@ -93,7 +93,7 @@ for (let f = 0; f < 60 * SECS; f++) {
   if (R.msg && R.msg !== lastMsg) { lastMsg = R.msg; msgs[R.msg.text] = (msgs[R.msg.text] || 0) + 1; }
   for (const n of R.nums) if (n.big && !n.seen) { n.seen = true; crits++; }
   seen.add(p.st + (p.form === 'blood' ? '(血)' : ''));
-  for (const e of R.en) seen.add('hound:' + e.st);
+  for (const e of R.en) seen.add((e.type || 'hound') + ':' + e.st);
   if (R.banner > lastBanner + 0.5) stats.perfect++;
   lastBanner = R.banner;
   if (p.hp < lastHp) stats.hurt++;

@@ -39,6 +39,11 @@ function hound(x, extra = {}) {
 }
 // 站着不动的木桩狗：一直眩晕，不会跑开干扰判定
 const dummy = (x, extra = {}) => hound(x, { st: 'stun', stunT: 99, hp: 600, ...extra });
+// 新敌人：直接摆状态（spawnEnemy 在闭包里拿不到）
+function foe(type, x, extra = {}) {
+  const hp = { skel: 30, ghost: 40, wiz: 40 }[type];
+  return hound(x, { type, hp, maxHp: hp, cd: 0, st: { skel: 'chase', ghost: 'drift', wiz: 'idle' }[type], skin: 'skel', ...extra });
+}
 function step(sec, press) {
   for (let i = 0; i < Math.round(sec * 60); i++) {
     sb.pulse.clear();
@@ -225,6 +230,53 @@ function toBlood(r, sec = 10) { r.p.form = 'blood'; r.p.rage = r.p.rageMax = sec
   check('影子跟在主角身后', r.shade && (r.shade.x - r.p.x) * r.p.face < 0 && Math.abs(r.shade.x - r.p.x) < 45, r.shade && (r.shade.x - r.p.x).toFixed(1));
   step(0.05, 'attack'); step(0.12);   // 等到普攻出判定那一帧
   check('普攻时影子挥爪', r.shade && r.shade.st === 'shade_swipe', r.shade && r.shade.st);
+}
+
+// 14 骷髅兵：贴脸蓄力后前扑，打中掉血；冲刺躲开算完美闪避
+{
+  const r = fresh();
+  const e = foe('skel', 236);
+  step(0.1);
+  check('骷髅 贴脸开始蓄力', e.st === 'windup', e.st);
+  const hp0 = r.p.hp; step(0.7);
+  check('骷髅 前扑打中', r.p.hp < hp0, `掉 ${hp0 - r.p.hp}`);
+  const r2 = fresh();
+  foe('skel', 236, { st: 'windup', t: 0.42, face: -1 });
+  step(0.02, 'dodge');
+  check('骷髅 蓄力末尾冲刺 = 完美闪避', r2.witch > 0, `断裂 ${r2.witch.toFixed(2)}`);
+}
+// 15 幽灵：隐身时打不到，现身在主角背后，尖啸打一圈
+{
+  const r = fresh();
+  const e = foe('ghost', 300, { y: 480, ground: false });
+  step(0.6);
+  check('幽灵 隐身中', e.hide === true, e.st);
+  const hp0 = e.hp; sb.window.__R.en.forEach(() => {}); step(0.05, 'attack');
+  check('幽灵 隐身时打不到', e.hp === hp0);
+  step(0.5);
+  check('幽灵 绕到主角背后', (e.x - r.p.x) * r.p.face < 0, `幽灵 ${e.x.toFixed(0)} 主角 ${r.p.x.toFixed(0)} 朝向 ${r.p.face}`);
+  const php = r.p.hp; step(1.0);
+  check('幽灵 尖啸打中', r.p.hp < php, `掉 ${php - r.p.hp} st ${e.st}`);
+}
+// 16 火焰巫师：聚火后丢火球；普攻把火球打回去，砸中巫师
+{
+  const r = fresh();
+  const e = foe('wiz', 330, { cd: 0 });
+  step(0.65);
+  check('巫师 丢出火球', r.eshots.length === 1, `火球 ${r.eshots.length}`);
+  const b = r.eshots[0];
+  while (b && !b.refl && Math.abs(b.x - r.p.x) > 70 && r.eshots.length) step(1 / 60);   // 提前出刀，出判定那一帧火球正好到
+  step(0.02, 'attack'); step(0.2);
+  check('普攻反弹火球', b && b.refl, b && `refl ${b.refl}`);
+  step(1.0);
+  check('反弹的火球砸中巫师', e.hp < 40, `巫师血 ${e.hp}`);
+}
+// 17 火球就要撞上时冲刺 = 完美闪避
+{
+  const r = fresh();
+  r.eshots.push({ x: r.p.x + 30, y: r.p.y - 18, vx: -170, vy: 0, t: 0, refl: false });
+  step(0.02, 'dodge');
+  check('火球 完美闪避', r.witch > 0, `断裂 ${r.witch.toFixed(2)}`);
 }
 
 console.log(fails ? `\n${fails} 项失败` : '\n全部通过');

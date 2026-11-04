@@ -66,6 +66,18 @@ try:
     press = lambda k: js(f"pulse.add('{k}')")
 
     reset_cd = "window.__R.p.cd = { u: 0, i: 0, o: 0 }"
+    if len(sys.argv) > 4 and sys.argv[4] == 'enemies':   # 新敌人：各自的待机 / 预警 / 出招
+        FOES = """(() => { const R = window.__R; R.waveT = 999; R.en.length = 0; R.eshots.length = 0;
+          const mk = (type, x, y, ex) => R.en.push(Object.assign({ type, x, y, vx: 0, vy: 0, face: -1, hp: 40, maxHp: 40, st: 'idle', t: 0, flash: 0, home: x, pdir: -1,
+            ground: true, hitPlayer: false, an: 0, mark: 0, stunT: 99, cd: 99, skin: 'skel' }, ex));
+          R.p.x = 300; R.p.face = 1; R.cam.x = 60;
+          %s })()"""
+        js(FOES % "mk('skel', 360, 500, { st: 'rise', t: 0.35 }); mk('skel', 420, 500, { st: 'chase', skin: 'skelc', hp: 20, maxHp: 30 }); mk('ghost', 500, 470, { st: 'drift', ground: false }); mk('wiz', 580, 436, { st: 'cast', t: 0.4 });")
+        time.sleep(0.15); shot('e_idle')
+        js(FOES % "mk('skel', 336, 500, { st: 'windup', t: 0.25 }); mk('ghost', 262, 496, { st: 'windup', t: 0.2, ground: false, face: 1 }); mk('wiz', 580, 436, { st: 'idle', cd: 0 });")
+        time.sleep(0.5); shot('e_tell')
+        time.sleep(0.25); shot('e_attack')
+        print(chr(10).join(logs) or 'no errors'); sys.exit(0)
     if len(sys.argv) > 4 and sys.argv[4] == 'cutin':   # 冻结切入画面：停留中 / 碎裂中
         for name, t in [('cut_hold', 0.35), ('cut_glint', 0.36), ('cut_shatter', 1.42)]:
             js(f"window.__R.cutin = {{ t: {t}, freeze: true }}"); time.sleep(0.3); shot(name)
