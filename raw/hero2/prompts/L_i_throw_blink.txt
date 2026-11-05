@@ -1,0 +1,23 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight and momentum. Use the character in the reference images exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line.
+
+Layout: a 4 columns x 3 rows grid of 12 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 12. Row 1 and row 2 are one continuous skill: hurling the greatsword forward like a spear. Row 3 is a separate instant-teleport arrival followed by a rising slash.
+
+Row 1, the throw:
+1. Ready stance, sword in the right hand.
+2. Drawing the sword back over the right shoulder, both hands on the hilt, body coiled and turned slightly.
+3. Hurling it forward: the arm whipping over and forward, body uncoiling.
+4. Arm fully extended forward, fingers just opening, the hand empty, body rotated through the throw.
+
+Row 2, follow-through and recovery:
+5. Follow-through: torso twisted away, empty right hand swept down across the body.
+6. Snapping the body back upright, empty hand, coat swinging past.
+7. Low ready stance, empty right hand raised in front like a guide, left hand open behind.
+8. Coiled forward, empty right hand reaching out, knees bent, ready to dash.
+
+Row 3, instantaneous arrival and the slash:
+9. Crouched very low facing right, the greatsword suddenly back in the right hand, pulled back at the hip against the ground.
+10. Explosive rising diagonal slash: body uncoiling upward, blade sweeping from low right hip to high in front, arm extended.
+11. Follow-through of the slash: body turned, blade swept down and out in front at knee height.
+12. Settled ready stance, sword at guard, identical to frame 1.
+
+Every frame: the SAME character, strict side view facing RIGHT (the body may twist, but the head and feet keep facing right; never face the camera, never turn away); identical character scale in every cell; feet on the same ground line in every cell; whole body inside the cell with margin, the whole sword inside the cell in every frame where it is held (frames 4 to 8 have no sword). Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no slash effects, no motion trails, no afterimages, no dust (effects are added in code), no background objects, no extra characters, no floating swords, no text.

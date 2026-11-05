@@ -1,0 +1,14 @@
+Pixel art sprite sheet for a 2D side-scrolling action game boss, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight. Use the creature in the reference image exactly: a hulking hooded demon in a ragged black-purple robe, two large dark-red bat wings with spiked tips, a glowing cyan horned skull for a face, and small orange skulls hanging from chains at its sides. It is big and heavy.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 8. One continuous flying dive attack.
+
+1. Crouching to take off, wings raised.
+2. Launching upward, wings beating down, body stretched upward, robe trailing below.
+3. Hovering high, wings spread wide, body upright, looking down.
+4. Hovering, wings beating up, same pose.
+5. Diving down: wings folded tight behind, body tilted head-first and downward.
+6. Impact: slamming down, wings thrown wide, crouched, ground-pound pose.
+7. Crouched on the ground after landing, wings drooping.
+8. Rising back to standing, wings half open.
+
+Every frame: the SAME creature at the SAME scale in every cell, strict side view facing RIGHT (never face the camera, never turn away); within one row the feet/robe bottom sit on the same ground line unless the frame is airborne; whole body including both wings inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no fire, no flames, no slash effects, no motion trails, no dust, no background objects, no extra characters, no minions, no text.

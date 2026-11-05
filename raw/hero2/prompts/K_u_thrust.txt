@@ -1,0 +1,14 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight and momentum. Use the character in the reference images exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 8. All eight frames are ONE continuous skill: a low explosive forward thrust that drives the whole body about one body-length to the right, then a sharp braking recovery.
+
+1. Ready stance, both hands on the hilt, sword angled low in front.
+2. Coiling back and down, weight shifting onto the rear leg, the sword pulled back beside the hip, point aimed straight forward to the right.
+3. Deepest crouch, body compressed like a spring, coat tails gathered, blade still aimed forward.
+4. Launch: rear leg driving, body stretching forward and low, blade starting to shoot forward.
+5. Peak of the thrust: body stretched horizontally and very low, blade thrust straight forward at waist height with the arm fully extended, rear leg trailing far behind, coat streaming straight back.
+6. Passing through: same low stretched pose, blade still forward, coat and hair whipping back.
+7. Braking: front foot planted hard, body rising and leaning back against the momentum, blade sweeping out to the right side.
+8. Recovered ready stance, sword back at guard, identical to frame 1.
+
+Every frame: the SAME character, strict side view facing RIGHT (the body may twist, but the head and feet keep facing right; never face the camera, never turn away); identical character scale in every cell; feet on the same ground line in every cell; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no slash effects, no motion trails, no afterimages, no dust (effects are added in code), no background objects, no extra characters, no text.

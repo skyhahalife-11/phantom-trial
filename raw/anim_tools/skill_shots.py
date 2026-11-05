@@ -47,7 +47,8 @@ try:
         cmd('Emulation.setTouchEmulationEnabled', enabled=True, maxTouchPoints=5)
     else:
         cmd('Emulation.setDeviceMetricsOverride', width=1280, height=720, deviceScaleFactor=1, mobile=False)
-    cmd('Page.navigate', url=BASE + '?room2=1&dbg=1')
+    MODE = sys.argv[4] if len(sys.argv) > 4 else ''
+    cmd('Page.navigate', url=BASE + '?room2=1&dbg=1' + ('&boss=1' if MODE == 'boss' else ''))
     for _ in range(40):   # 素材预载完、场景进入后才有 __R
         time.sleep(0.25)
         if js('!!(window.__R && window.__R.p)'): break
@@ -56,6 +57,23 @@ try:
         cmd('Input.dispatchTouchEvent', type='touchStart', touchPoints=[{'x': 500, 'y': 200}])
         cmd('Input.dispatchTouchEvent', type='touchEnd', touchPoints=[])
 
+    if MODE == 'boss':   # 墓渊魔各招式定格：设好状态 → R.stop 冻结 → 截图
+        for _ in range(40):
+            if js("!!(window.__R && window.__R.en.find(x => x.boss))"): break
+            time.sleep(0.25)
+        js("(() => { const R = window.__R, e = R.en.find(x => x.boss); R.waveT = 999; R.p.x = e.x - 230; R.p.y = 500; R.p.hp = 9999; R.p.inv = 99; R.cam.x = Math.max(0, e.x - 330); e.x = Math.min(e.x, 900); })()")
+        time.sleep(1.4)
+        STATES = [('charge0', "st:'charge',sub:0,t:0.55"), ('charge1', "st:'charge',sub:1,t:0.1"), ('charge_rec', "st:'recover',lastMove:'charge',t:0.2,recT:9"),
+                  ('breath0', "st:'breath',sub:0,t:0.75"), ('breath1', "st:'breath',sub:1,t:0.3"), ('breath_rec', "st:'recover',lastMove:'breath',t:0.1,recT:9"),
+                  ('dive0', "st:'dive',sub:0,t:0.3"), ('dive1', "st:'dive',sub:1,t:0.4"), ('dive_rec', "st:'recover',lastMove:'dive',t:0.1,recT:9"),
+                  ('summon0', "st:'summon',sub:0,t:0.3"), ('summon1', "st:'summon',sub:1,t:0.5"), ('stagger', "st:'recover',lastMove:'',t:0.9,recT:9")]
+        for name, st in STATES:
+            js("(() => { const R = window.__R, e = R.en.find(x => x.boss); R.stop = 0; R.p.x = e.x - 230; R.p.y = 500; Object.assign(e, {face:-1, hp:e.maxHp, y:500, vy:0, vx:0, " + st + "}); if (e.st === 'dive' && e.sub < 2) e.y = 500 - 230; R.cam.x = Math.max(0, e.x - 330); })()")
+            time.sleep(0.05)
+            js("window.__R.stop = 9")
+            time.sleep(0.2); shot('s_' + name)
+        js("window.__R.stop = 0")
+        print(chr(10).join(logs) or 'no errors'); sys.exit(0)
     # 摆局面：不刷波次，主角右边一排三只狗，魂 3.5 格
     SETUP = """(() => { const R = window.__R; R.waveT = 999; R.en.length = 0;
       const mk = (x, ex) => R.en.push(Object.assign({ x, y: 500, vx: 0, vy: 0, face: -1, hp: 60, st: 'stun', t: 0, stunT: 99, flash: 0, home: x, pdir: -1, ground: true, hitPlayer: false, an: 0, mark: 0 }, ex));

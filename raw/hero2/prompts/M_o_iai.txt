@@ -1,0 +1,23 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight and momentum. Use the character in the reference images exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line.
+
+Layout: a 4 columns x 3 rows grid of 12 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 12. All twelve frames are ONE continuous skill: a sheathed iai draw that ends in a forward cut, then resheathing.
+
+Row 1, the coil (the sword rests sheathed at the left hip):
+1. Ready stance, both hands loose at the sides, sword sheathed at the left hip pointing back.
+2. Right hand gripping the hilt, shoulders lowering.
+3. Deep crouch, body turned slightly away from the target, weight loaded onto the rear leg, the sheath pulled back.
+4. Extreme coil: knees deeply bent, torso twisted away, the hand white-knuckled on the hilt, the sword still sheathed.
+
+Row 2, the draw and cut:
+5. Explosive draw: the blade leaving the sheath in a horizontal arc, sparks of speed in the pose only (no drawn effects), body starting to unwind.
+6. Full extension: blade swept out straight forward at chest height, arm fully extended, body uncoiled and leaning into the cut.
+7. Held extension: same long pose, blade still forward, coat and hair settling.
+8. Still holding the cut, body beginning to turn back.
+
+Row 3, resheathing:
+9. Drawing the blade back across the body toward the sheath.
+10. Guiding the blade tip into the sheath mouth at the left hip.
+11. Sliding the last of the blade home, shoulders relaxing, body straightening.
+12. Neutral ready stance, sword sheathed, identical to frame 1.
+
+Every frame: the SAME character, strict side view facing RIGHT (the body may twist, but the head and feet keep facing right; never face the camera, never turn away); identical character scale in every cell; feet on the same ground line in every cell; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no slash effects, no motion trails, no afterimages, no dust (effects are added in code), no background objects, no extra characters, no text.

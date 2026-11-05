@@ -37,7 +37,7 @@ const WITCH_SLOW = 0.2, WITCH_T = 2.2, WITCH_FADE = 0.3;
 const BUF = 0.12, COYOTE = 0.08;   // 预输入：按键提前 0.12 秒也算数；土狼时间：走出平台边 0.08 秒内还能起跳
 
 /* 技能数值（文档 §8.8，数值为拟定） */
-const CD = { u: 6, i: 5, o: 7 };   // 常态与变身共用同一套冷却；掷碑的冷却从剑回到手里才开始算
+const CD = { u: 5, i: 4.5, o: 6 };   // 常态与变身共用同一套冷却；掷碑的冷却从剑回到手里才开始算
 const SK = {
   u: { dist: 140, t: 0.15, dmg: 18, mark: 10 },   // 一口气穿过去；冲完离敌人不远，方便回身接普攻
   // 掷碑：飞出 0.34 秒（约 175 像素）→ 悬停 → 飞回；去程回程各打一次并钉住；剑在外面时再按瞬身过去斩一刀
@@ -68,6 +68,8 @@ const HOUND = {
   anim: { idle: [6, 64, 32], walk: [12, 64, 32], run: [5, 67, 32], jump: [6, 65, 48] },
 };
 // 骷髅兵：从土里爬出来，慢慢逼近，贴脸后仰一下再前扑抓一把；血少，成群出现
+// 重甲兵：慢、血厚、平时吃 35% 伤害且不被打断；它出招落空的破绽期、被完美闪避 / 突刺打晕时才吃全伤
+const BRUTE = { hp: 120, dmg: 20, walk: 38, reach: 60, windup: 0.85, slamT: 0.2, recover: 1.0, armor: 0.35, scale: 1.45 };
 const SKEL = { hp: 30, dmg: 10, walk: 52, reach: 46, windup: 0.6, lungeV: 150, lungeT: 0.2, recover: 0.6, rise: 0.6 };
 // 幽灵：飘着穿过平台；隐身（抓不到）→ 在主角背后现身 → 蓄力尖啸，打一圈
 const GHOST = { hp: 40, dmg: 12, drift: 55, sight: 300, cd: 2.6, vanish: 0.5, hidden: 0.35, appear: 0.43, behind: 46, windup: 0.6, shriek: 0.3, radius: 58, hover: 16 };
@@ -79,29 +81,31 @@ const BOSS = {
   hp: 1400, name: '墓渊魔', wave: 4, walk: 70, near: 110, gap: 0.9, gap2: 0.55, weak: 1.25, phase2: 0.5, fast: 0.8,
   charge: { windup: 0.7, v: 380, t: 0.4, dmg: 18, recover: 0.9 },
   breath: { crouch: 0.35, rear: 0.5, fire: 0.5, dmg: 16, recover: 0.8, reach: 136 },
-  dive: { rise: 0.45, h: 230, track: 0.9, fall: 900, dmg: 22, radius: 70, recover: 1.0 },
+  dive: { rise: 0.45, h: 165, track: 0.9, fall: 900, dmg: 22, radius: 70, recover: 1.0 },
   summon: { cd: 14, t: 0.9, n: 3 },
 };
-const EBOX = { hound: [18, 24], skel: [11, 40], ghost: [12, 40], wiz: [12, 42], boss: [30, 96] };   // 受击框：半宽、高
-const EMAX = { hound: HOUND.hp, skel: SKEL.hp, ghost: GHOST.hp, wiz: WIZ.hp, boss: BOSS.hp };
-const ETOP = { hound: 30, skel: 46, ghost: 50, wiz: 50, boss: 118 };   // 血条 / 预警 / 眩晕星画在脚底往上多少
+const EBOX = { hound: [18, 24], skel: [11, 40], ghost: [12, 40], wiz: [12, 42], boss: [30, 96], brute: [16, 58] };   // 受击框：半宽、高
+const EMAX = { hound: HOUND.hp, skel: SKEL.hp, ghost: GHOST.hp, wiz: WIZ.hp, boss: BOSS.hp, brute: BRUTE.hp };
+const ETOP = { hound: 30, skel: 46, ghost: 50, wiz: 50, boss: 118, brute: 70 };   // 血条 / 预警 / 眩晕星画在脚底往上多少
 const etype = (e) => e.type || 'hound';
+const snd = (n, o) => { if (window.sfx) sfx.play(n, o); };
+const mv = (k, d = 0) => (R.M && R.M[k] != null ? R.M[k] : d);   // 肉鸽强化汇总出的属性；自由试玩时没有
 
 /* 地面 500；四层平台每层高 64，单跳 65 像素、二段跳合计约 115 像素 */
 const ROOM = {
-  w: 2560, h: 540, ground: 500,
+  w: 1280, h: 540, ground: 500,
   plats: [
-    { x: 260, y: 436, w: 160 }, { x: 520, y: 372, w: 128 }, { x: 760, y: 436, w: 192 },
-    { x: 1040, y: 372, w: 160 }, { x: 1290, y: 308, w: 128 }, { x: 1520, y: 436, w: 224 },
-    { x: 1830, y: 372, w: 160 }, { x: 2080, y: 308, w: 128 }, { x: 2280, y: 436, w: 160 },
+    { x: 100, y: 436, w: 160 }, { x: 300, y: 372, w: 128 }, { x: 440, y: 308, w: 128 }, { x: 560, y: 436, w: 192 },
+    { x: 780, y: 372, w: 160 }, { x: 900, y: 308, w: 128 }, { x: 1020, y: 436, w: 160 },
   ],
   props: [
-    ['tree-1', 120], ['stone-1', 470], ['statue', 700], ['bush-large', 980], ['tree-2', 1250], ['stone-2', 1450],
-    ['bush-small', 1700], ['statue', 1900], ['tree-3', 2150], ['stone-3', 2380], ['bush-large', 2500],
+    ['tree-1', 80], ['stone-1', 250], ['statue', 420], ['bush-large', 600], ['tree-2', 760], ['stone-2', 900],
+    ['bush-small', 1020], ['statue', 1100], ['tree-3', 1180], ['stone-3', 1240],
   ],
 };
 
 const R = {};
+let pendingCfg = null;   // 肉鸽流程传来的战斗配置，enter() 时取走
 
 function rImg(p) { return img(p); }
 function rReset() {
@@ -110,11 +114,15 @@ function rReset() {
     st: 'idle', t: 0, hp: 100, mx: 100, inv: 0, dashCd: 0, combo: -1, queued: false, comboGap: 9, hitDone: false,
     runT: 0, dashEnd: 9, airCd: 0, perfectUsed: false, coy: 0,
     buf: { dodge: 0, jump: 0, attack: 0, s1: 0, s2: 0, s3: 0, s4: 0 },
-    soul: Number(params.get('soul')) || 0,   // soul=n：调试用，开局带魂
+    soul: Math.min(5, (Number(params.get('soul')) || 0) + ((R.cfg && R.cfg.startSoul) || 0)),   // soul=n：调试用；startSoul：幻之屋「魂引」
     cd: { u: 0, i: 0, o: 0 }, link: { u: -99, i: -99, o: -99 },
     form: 'normal', rage: 0, rageMax: 1, hitSet: null, aimUp: false, storm: null, maul: null,
   };
-  R.cam = { x: 0, y: ROOM.h - RB_H };
+  R.cam = { x: 0, y: ROOM.h - RB_H }; R.pend = [];
+  R.M = R.cfg ? R.cfg.mods : null; R.endT = 0; R.ended = false; R.godDone = false;
+  if (R.cfg) { R.p.mx = R.cfg.maxHp; R.p.hp = R.cfg.hp; }
+  Object.assign(R.p, { pdStacks: 0, pdT: 0, pdEye: 0, shield: 0, chainT: 0, dblT: 0, chainDmg: 0, chainCd: false, twoCritOn: false,
+    lastSk: '', lastSkT: -9, ultAfterT: 0, streak: 0, chargeT: -9, stunHits: 0 });
   R.en = []; R.fx = []; R.nums = []; R.cuts = []; R.blade = null; R.shots = []; R.drops = []; R.rain = null; R.rcombo = 0; R.shade = null; R.eshots = [];
   R.wave = params.get('boss') ? BOSS.wave - 1 : 0; R.kills = 0; R.waveT = 1.2;   // boss=1：调试用，开局直接打 Boss
   R.stop = 0; R.shake = 0; R.witch = Number(params.get('witch')) || 0; R.banner = 0;   // witch=秒：调试用，开局直接进时空断裂
@@ -264,21 +272,120 @@ function noteLink(k) {
   if (Object.values(p.link).every((t) => R.time - t <= LINK_T)) {
     gainSoul(1);
     p.link = { u: -99, i: -99, o: -99 };
-    say('三技联动　魂 +1', '#8fd8ff');
+    say('三技联动　魂 +1', '#8fd8ff'); snd('soul');
   }
 }
 
 /* 主角对敌人造成伤害的统一入口：暴击、墓志灌魂、联动记录都在这里结算 */
 function strike(e, dmg, o = {}) {
   if (e.st === 'dead' || e.hide) return;
-  const crit = !!o.critStun && e.st === 'stun';
+  const p = R.p, M = R.M;
+  let crit = !!o.critStun && e.st === 'stun';
   if (crit) dmg *= 2;
   if (e.boss && e.st === 'recover') dmg *= BOSS.weak;   // Boss 破绽
+  const brute = etype(e) === 'brute';
+  if (brute && !['stun', 'recover'].includes(e.st)) dmg *= BRUTE.armor;   // 重甲：平时只吃 35%
+  if (M) {   // 肉鸽强化：伤害倍率、暴击、命中后的附带效果
+    const blood = p.form === 'blood';
+    dmg *= M.dmg;
+    if (o.basic) {
+      dmg *= mv('basicMul', 1);
+      if (o.third && mv('heavy3')) dmg *= 1.4;
+      if (mv('frenzy')) dmg *= 1 + Math.min(0.25, 0.05 * Math.floor(p.streak / 10));
+    } else { dmg *= M.skillAll; if (!blood) dmg *= mv('normMul', 1); }
+    if (blood) dmg *= mv('ultAmp', 1);
+    if (!blood && p.ultAfterT > 0) dmg *= 1.25;
+    if (o.skill && p.chainDmg > R.time) dmg *= 1.2;
+    if (!o.basic && p.pdStacks > 0) dmg *= 1 + 0.1 * p.pdStacks;
+    if (e.boss) dmg *= 1 + M.bossDmg;
+    if (e.mark > 0 && mv('markAmp')) dmg *= 1.1;
+    if (e.armorT > 0) dmg *= 1.08;
+    if (!crit) {
+      const forced = (!o.basic && p.pdEye > 0) || (o.skill && p.twoCritOn) || (o.third && mv('basicCore'));
+      if (forced || Math.random() < M.crit) { crit = true; dmg *= 1.5 + M.critDmg; }
+    }
+    if (o.basic) {
+      p.streak++;
+      if (mv('armorBreak')) e.armorT = 3;
+      if (mv('basicCd')) for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - mv('basicCd'));
+    }
+    if (o.skill && mv('ultCharge') && R.time - p.chargeT > 0.3) { p.chargeT = R.time; gainSoul(mv('ultCharge')); }
+  }
   if (o.basic && e.mark > 0) gainSoul(SOUL_HIT);
-  if (o.mark) e.mark = o.mark;
+  if (o.mark) e.mark = o.mark + mv('markExtra');
   if (o.skill) noteLink(o.skill);
-  if (R.p.form === 'blood') R.rcombo++;
-  hurtEnemy(e, Math.round(dmg), o.kb || 0, o.launch, { crit, stun: o.stun });
+  if (p.form === 'blood') R.rcombo++;
+  hurtEnemy(e, Math.max(1, Math.round(dmg)), o.kb || 0, o.launch, { crit, stun: o.stun, breakArmor: brute && o.skill === 'u' ? 1.4 : 0 });
+}
+
+/* ---------- 肉鸽强化用到的小工具 ---------- */
+function cdRate() {
+  if (!R.M) return 1;
+  const blood = R.p.form === 'blood';
+  return 1 / Math.max(0.35, 1 - Math.min(0.6, R.M.cdr + (blood ? 0 : mv('normCd'))) + (blood ? 0 : mv('normCdPlus')));
+}
+function setCd(p, k, extra = 0) {   // 常态三个技能的冷却：疾葬、秘卷连环、双发都在这里结算
+  let v = CD[k] + extra;
+  if (k === 'u') v *= 1 - mv('uCdr');
+  if (p.chainCd) { v *= 0.7; p.chainCd = false; }
+  if (R.M && Math.random() < mv('noCdProb')) v = 0;
+  p.cd[k] = v;
+}
+function noteCast(p, k) {   // 记录上一个释放的技能：秘卷·连环、双技
+  if (!R.M) return;
+  const t = R.time, diff = p.lastSk && p.lastSk !== k;
+  p.twoCritOn = !!(mv('twoCrit') && diff && t - p.lastSkT <= 1.5);
+  const chain = !!(mv('scroll') && diff && t - p.lastSkT <= 4);
+  p.chainDmg = chain ? t + 1.2 : 0; p.chainCd = chain;
+  p.lastSk = k; p.lastSkT = t;
+}
+const rageNeed = () => Math.max(2, RAGE.minSoul - (mv('soulCore') ? 1 : 0) - (mv('pact') ? 1 : 0));
+const ragePer = () => (RAGE.perSoul + mv('perSoulAdd') - (mv('pact') ? 0.5 : 0)) * mv('ultDur', 1) * (mv('soloRage') ? 0.5 : 1);
+function thrustEcho(p) {
+  const box = { x0: p.x - 50, x1: p.x + 50, y0: p.y - 50, y1: p.y + 6 };
+  vfx('exp2_' + tint(), p.x, p.y - 10, { ground: true }); R.shake = Math.max(R.shake, 3);
+  for (const e of alive()) if (overlap(box, eBox(e))) strike(e, 20, { skill: 'u', launch: -160 });
+}
+
+/* ---------- 肉鸽战斗：按配置刷波次，打完 / 倒下后回调 ---------- */
+const waveLabel = () => (R.cfg ? (R.cfg.boss ? 'BOSS' : `第 ${Math.min(R.wave, R.cfg.waves.length)} / ${R.cfg.waves.length} 波`) : `第 ${R.wave} 波`);
+function runWaves(dt) {
+  const cfg = R.cfg;
+  if (R.dead) { R.endT += dt; if (R.endT > 1.4) finishRun(false); return; }
+  if (R.cfg.god && !R.godDone && R.time > 3.5 && R.en.length) {   // 幻神回应：下一战开场 3.5 秒后全屏打击
+    R.godDone = true; say('幻神降临', '#ffd23a'); R.flash = 0.15; R.shake = 6;
+    for (const e of alive()) if (onScreen(R.p, e)) strike(e, 70 * (e.boss ? 0.3 : 1), { launch: e.boss ? 0 : -200 });
+  }
+  const left = R.en.length + R.pend.length;
+  if (R.wave < cfg.waves.length) {
+    if (left > (cfg.trigger || 0)) return;
+    R.waveT -= dt; if (R.waveT <= 0) { R.wave++; spawnList(cfg.waves[R.wave - 1]); R.waveT = 1.2; }
+    return;
+  }
+  if (left) return;
+  R.endT += dt;
+  if (R.endT > 1.6) finishRun(true);
+}
+function finishRun(win) {
+  if (R.ended) return;
+  R.ended = true;
+  snd(win ? 'victory' : 'defeat');
+  const cfg = R.cfg, p = R.p;
+  R.cfg = null;
+  cfg.onEnd(win, { hp: Math.max(0, p.hp), mx: p.mx, kills: R.kills });
+}
+function scaleNew(n0) {
+  if (!R.cfg) return;
+  for (const e of R.en.slice(n0)) {
+    if (e.boss) {
+      e.hp = e.maxHp = Math.round(BOSS.hp * R.cfg.bossMul);
+      // 第 2、3 关的 Boss 变体（由血量倍数区分）：孽生=开场就持续召唤骷髅；狂化=一开场就是狂怒形态
+      e.variant = R.cfg.bossMul >= 2 ? 'fury' : R.cfg.bossMul >= 1.5 ? 'brood' : '';
+      if (e.variant === 'fury') e.p2 = true;
+      if (e.variant === 'brood') e.sumT = 5;
+    }
+    else e.hp = e.maxHp = Math.round(e.maxHp * R.cfg.eMul.hp * (e.elite ? 1.8 : 1));
+  }
 }
 
 function playerUpdate(p, dt) {
@@ -286,7 +393,11 @@ function playerUpdate(p, dt) {
   const dir = (Rt ? 1 : 0) - (L ? 1 : 0);
   const blood = p.form === 'blood';
   p.t += dt; p.inv = Math.max(0, p.inv - dt); p.catchT = (p.catchT || 0) - dt; p.dashCd -= dt; p.comboGap += dt; p.dashEnd += dt; p.airCd -= dt; p.drop -= dt;
-  for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - dt);
+  const cr = cdRate();
+  for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - dt * cr);
+  p.chainT -= dt; p.scrollT -= dt; p.ultAfterT -= dt; p.pdEye -= dt; p.pdT -= dt;
+  if (p.pdT <= 0) p.pdStacks = 0;
+  if (p.dblT > 0) { p.dblT -= dt; if (p.dblT <= 0) setCd(p, 'u'); }
   if (p.st === 'dead') { p.vx *= 0.9; phys(p, dt); return; }
 
   // 暴走倒计时，到点自动「葬」收尾
@@ -297,19 +408,19 @@ function playerUpdate(p, dt) {
 
   const busy = ['atk', 'airatk', 'runatk', 'land', 'plunge'].includes(p.st) || LOCK.includes(p.st);
   // 冲刺（带无敌，完美闪避在敌人攻击判定里结算）；暴走中变成血影闪
-  if (want(p, 'dodge') && p.dashCd <= 0) {
+  if (want(p, 'dodge') && p.dashCd <= 0 && !mv('noDodge')) {
     const dd = virt.dodgeDir || dir;   // 触屏滑动闪避带方向
     if (!blood && !['hurt', 'dash', 'thrust', 'blink', 'storm', 'transform'].includes(p.st) && (p.ground || p.airDash)) {
       use(p, 'dodge'); virt.dodgeDir = 0;
       if (dd) p.face = dd;
       if (!p.ground) p.airDash = false;
-      setSt(p, 'dash'); p.vx = p.face * DASH_V; p.vy = 0; p.inv = DASH_INV; p.dashCd = DASH_CD; p.perfectUsed = false;
+      snd('dash'); setSt(p, 'dash'); p.vx = p.face * DASH_V; p.vy = 0; p.inv = DASH_INV; p.dashCd = DASH_CD * (1 - Math.min(0.6, mv('dodgeCdr'))); p.perfectUsed = false;
       R.fx.push({ k: 'ghost', x: p.x, y: p.y, face: p.face, t: 0 });
       checkPerfect(p);
     } else if (blood && (FREE.includes(p.st) || p.st === 'rdash')) {
       use(p, 'dodge'); virt.dodgeDir = 0;
       if (dd) p.face = dd;
-      setSt(p, 'rdash'); p.hitSet = new Set(); p.vx = p.face * TSK.shadowV; p.vy = 0; p.dashCd = 0.12;
+      snd('dash', { rate: 1.3 }); setSt(p, 'rdash'); p.hitSet = new Set(); p.vx = p.face * TSK.shadowV; p.vy = 0; p.dashCd = 0.12;
     }
   }
   // 技能（扔剑的收招也能接技能，扔完马上瞬身过去最顺手）
@@ -385,6 +496,8 @@ function playerUpdate(p, dt) {
       if (p.t < SK.u.t) thrustHits(p);
       else p.vx *= Math.pow(0.0005, dt);   // 冲完短暂滑行
       if (p.t >= SK.u.t + 0.06) {
+        if (mv('thrustEcho') && p.stunHits >= 2) thrustEcho(p);
+        p.stunHits = 0;
         // 刚穿过的敌人就在身后 100 像素内：自动回身面向它，排队的普攻直接接上
         const back = [...p.hitSet].filter((e) => e.st !== 'dead' && (e.x - p.x) * p.face < 0 && Math.abs(e.x - p.x) < 100);
         if (back.length) p.face = -p.face;
@@ -436,11 +549,11 @@ function playerUpdate(p, dt) {
     case 'tfinish':
       p.vx = 0; p.vy = Math.min(p.vy, 0);
       if (!p.hitDone && p.t >= FIN.hitT) { p.hitDone = true; doFinisher(p); }
-      if (p.t >= FIN.hitT + FIN.after) { p.form = 'normal'; p.rage = 0; p.inv = 0.6; p.cd = { u: 0, i: 0, o: 0 }; setSt(p, 'idle'); }
+      if (p.t >= FIN.hitT + FIN.after) { p.form = 'normal'; p.rage = 0; p.ultAfterT = mv('ultAfter') ? 4 : 0; if (mv('soulCore')) p.soul = 1; p.inv = 0.6; p.cd = { u: 0, i: 0, o: 0 }; setSt(p, 'idle'); }
       break;
     default: {
       // 自由移动：idle / run / jump / djump / fall
-      const tv = dir * P_RUN * (blood ? RAGE.run : 1);
+      const tv = dir * P_RUN * (blood ? RAGE.run : 1) * (1 + (R.M ? R.M.spd : 0));
       p.vx += clamp(tv - p.vx, -P_ACC * dt, P_ACC * dt);
       if (dir) p.face = dir;
       if (p.ground) setSt2(p, dir ? 'run' : 'idle');
@@ -456,8 +569,12 @@ function castSkills(p, dir, blood) {
   const ready = (key, k) => want(p, key) && p.cd[k] <= 0;
   if (!blood) {
     if (ready('s1', 'u')) {   // U 送葬突刺：地面空中都能用
-      use(p, 's1'); p.cd.u = CD.u; if (dir) p.face = dir;
-      setSt(p, 'thrust'); p.hitSet = new Set(); p.inv = 0.22; p.perfectUsed = false;
+      use(p, 's1'); noteCast(p, 'u'); if (dir) p.face = dir;
+      if (mv('blinkChain') && p.chainT > 0) { p.chainT = 0; p.cd.u = 0; }
+      else if (mv('thrust2') && p.dblT <= 0) { p.cd.u = 0; p.dblT = 1; }
+      else { p.dblT = 0; setCd(p, 'u'); }
+      p.stunHits = 0;
+      setSt(p, 'thrust'); snd('thrust'); p.hitSet = new Set(); p.inv = 0.22; p.perfectUsed = false;
       p.vx = p.face * SK.u.dist / SK.u.t; p.vy = 0;
       R.fx.push({ k: 'ghost', x: p.x, y: p.y, face: p.face, t: 0 });
       vfx('trail_soul', p.x + p.face * 26, p.y - 20, { rot: p.face > 0 ? Math.PI / 4 : -Math.PI / 4, flip: p.face < 0 });
@@ -465,21 +582,23 @@ function castSkills(p, dir, blood) {
     } else if (want(p, 's2') && R.blade) {   // I 再按：瞬身到剑的位置
       use(p, 's2'); blink(p);
     } else if (ready('s2', 'i') && p.st !== 'throw') {   // I 掷碑：按住上斜着往上扔
-      use(p, 's2'); if (dir) p.face = dir;
+      use(p, 's2'); noteCast(p, 'i'); if (dir) p.face = dir;
       p.aimUp = input.act('up');
       setSt(p, 'throw'); if (!p.ground) p.vy = Math.min(p.vy, 0) * 0.3;
-    } else if (ready('s3', 'o')) {   // O 断空；时空断裂中变成瞬狱
-      use(p, 's3'); p.cd.o = CD.o; if (dir) p.face = dir;
+    } else if (ready('s3', 'o') && !(mv('iaiOnly') && R.witch <= 0)) {   // O 断空；时空断裂中变成瞬狱
+      use(p, 's3'); noteCast(p, 'o'); setCd(p, 'o'); if (dir) p.face = dir;
       if (R.witch > 0 && startStorm(p)) return;
       setSt(p, 'iai');
     } else if (want(p, 's4')) {   // P 葬碑·血契
       use(p, 's4');
-      if (p.soul < RAGE.minSoul) { R.soulWarn = 0.8; say(`魂不足（需要 ${RAGE.minSoul} 格）`, '#ff8a8a'); return; }
-      p.rageMax = p.rage = p.soul * RAGE.perSoul;   // 每格魂 2.5 秒
+      if (mv('sealIdx', -1) === 3) { say('奥义已封印', '#ff8a8a'); return; }
+      if (p.soul < rageNeed()) { R.soulWarn = 0.8; say(`魂不足（需要 ${rageNeed()} 格）`, '#ff8a8a'); return; }
+      p.rageMax = p.rage = p.soul * ragePer();   // 每格魂 2.5 秒
       p.soul = 0; p.inv = 0.75; p.vx = 0; p.vy = Math.min(p.vy, 0);
       if (R.blade) R.blade = null;   // 变身时剑收回手里
       setSt(p, 'transform');
       R.cutin = { t: 0 };
+      snd('transform');
       say('葬碑·血契', '#ff6a6a');
     }
     return;
@@ -524,15 +643,17 @@ const HITBOX = {
 
 function doHit(p, kind) {
   const h = HITBOX[kind], box = faceBox(p, h), red = kind[0] === 't';
+  snd(red ? 'rageSwing' : kind === 'c2' ? 'atk3' : kind === 'c0' || kind === 'air' ? 'atk1' : 'atk2');
   const arc = ARC[kind === 'run' ? 'c1' : kind];
   if (arc) R.fx.push({ k: 'arc', x: p.x, y: p.y, face: p.face, arc, r: red ? 52 : 40, red, t: 0 });
   if (kind === 'run') R.fx.push({ k: 'streak', x: p.x, y: p.y - 22, face: p.face, t: 0 });
   if (red) shadeAct('shade_swipe');
   if (red) R.shots.push({ x: p.x + p.face * 24, y: p.y - 22, vx: p.face * TSK.waveV, t: 0, hit: new Set(), big: kind === 'tc2' });
+  if (red && mv('waveDouble')) R.shots.push({ x: p.x + p.face * 24, y: p.y - 38, vx: p.face * TSK.waveV, t: 0, hit: new Set(), big: false });
   let n = 0;
   for (const e of alive()) {
     if (!overlap(box, eBox(e))) continue;
-    strike(e, h.dmg, { kb: p.face * h.kb, launch: h.launch, basic: true });
+    strike(e, h.dmg, { kb: p.face * h.kb, launch: h.launch, basic: true, third: kind === 'c2' });
     n++;
   }
   if (n) { R.stop = 0.06; R.shake = Math.max(R.shake, kind === 'c2' || kind === 'tc2' ? 3 : 2); }
@@ -560,6 +681,7 @@ function thrustHits(p) {
   for (const e of alive()) {
     if (p.hitSet.has(e) || !overlap(box, eBox(e))) continue;
     p.hitSet.add(e);
+    if (e.st === 'stun') p.stunHits++;
     p.vx *= 0.75;   // 穿过一个敌人只略微减速，保留冲劲（不急停）
     vfx('exp1_soul', e.x, e.y - 16);
     strike(e, SK.u.dmg, { critStun: true, mark: SK.u.mark, skill: 'u', kb: p.face * 40 });
@@ -569,6 +691,7 @@ function thrustHits(p) {
 
 // I 掷碑：墓碑巨剑像回旋镖一样飞出、悬停、飞回；去程回程各打一次，打中的敌人被钉住（算眩晕）
 function throwBlade(p) {
+  snd('throw');
   const a = p.aimUp ? -Math.PI / 4 : 0;
   R.blade = {
     x: p.x + p.face * 14, y: p.y - 22, vx: Math.cos(a) * SK.i.speed * p.face, vy: Math.sin(a) * SK.i.speed,
@@ -582,13 +705,13 @@ function updateBlade(dt) {
   b.t += dt; b.spin += dt * 26;
   if (b.phase === 'out') {
     b.x += b.vx * dt; b.y += b.vy * dt;
-    if (b.t >= SK.i.out || b.x < 8 || b.x > ROOM.w - 8 || b.y < 24) { b.phase = 'hover'; b.t = 0; }
+    if (b.t >= SK.i.out * (1 + mv('bladeFar')) || b.x < 8 || b.x > ROOM.w - 8 || b.y < 24) { b.phase = 'hover'; b.t = 0; }
   } else if (b.phase === 'hover') {
-    if (b.t >= SK.i.hover) { b.phase = 'back'; b.t = 0; b.hit = new Set(); }
+    if (b.t >= (mv('bladeStay') ? 3 : SK.i.hover)) { b.phase = 'back'; b.t = 0; b.hit = new Set(); }
   } else {
     const dx = p.x - b.x, dy = p.y - 22 - b.y, d = Math.hypot(dx, dy);
     const v = SK.i.back + b.t * 500;
-    if (d < 14 || d < v * dt) { R.blade = null; p.cd.i = CD.i; p.catchT = 0.18; return; }   // 接住，冷却从这时开始
+    if (d < 14 || d < v * dt) { R.blade = null; setCd(p, 'i', mv('bladeStay') ? 3 : 0); p.catchT = 0.18; return; }   // 接住，冷却从这时开始
     b.vx = dx / d * v; b.vy = dy / d * v;
     b.x += b.vx * dt; b.y += b.vy * dt;
   }
@@ -598,13 +721,14 @@ function updateBlade(dt) {
     if (b.hit.has(e) || !overlap(box, eBox(e))) continue;
     b.hit.add(e);
     vfx('exp1_soul', b.x, b.y);
-    strike(e, SK.i.dmg, { skill: 'i', stun: SK.i.pin, kb: sign(b.vx) * 20 });
+    strike(e, SK.i.dmg * (1 + mv('bladeDmg')), { skill: 'i', stun: SK.i.pin + mv('bladePin'), kb: sign(b.vx) * 20 });
     R.shake = Math.max(R.shake, 1);
   }
 }
 // I 瞬身：瞬移到剑的位置，路径上的敌人各斩一刀（钉住的必定暴击）；瞬移带无敌，穿过正在出招的敌人算完美闪避
 function blink(p) {
   const b = R.blade;
+  snd('blink');
   const x0 = p.x, y0 = p.y, x1 = clamp(b.x, 10, ROOM.w - 10), y1 = Math.min(b.y + 22, ROOM.ground);
   p.face = sign(x1 - x0) || p.face;
   p.perfectUsed = false;
@@ -618,18 +742,20 @@ function blink(p) {
   R.fx.push({ k: 'line', x: x0, y: y0 - 20, x1, y1: y1 - 20, t: 0 });
   vfx('exp6_soul', x1, y1 - 18);
   p.x = x1; p.y = y1; p.vx = p.face * 60; p.vy = 0; p.ground = y1 >= ROOM.ground; p.inv = 0.25; p.dj = false; p.airDash = true;
-  R.blade = null; p.cd.i = CD.i;
+  if (!mv('bladeStay')) { R.blade = null; setCd(p, 'i'); }
+  p.chainT = 1;
   setSt(p, 'blink');
   R.stop = Math.max(R.stop, 0.05); R.shake = Math.max(R.shake, 2);
 }
 
 // O 断空：拔刀一闪，前方区域延迟爆出斩痕；屏幕里带墓志的敌人身上也各爆一道
 function doIai(p) {
-  const c = { x: p.x + p.face * 90, y: p.y - 24, w: 120, h: 70, area: true, t: 0, delay: SK.o.delay, dmg: SK.o.dmg };
+  snd('iai');
+  const c = { x: p.x + p.face * 90, y: p.y - 24, w: 120 * (1 + mv('iaiWide') + mv('normRange')), h: 70, area: true, t: 0, delay: mv('iaiFast') ? 0.15 : SK.o.delay, dmg: SK.o.dmg };
   c.lines = Array.from({ length: 5 }, () => ({ dx: rnd(-50, 50), dy: rnd(-24, 24), a: rnd(0, Math.PI), l: rnd(22, 40) }));
   R.cuts.push(c);
   for (const e of alive()) {
-    if (e.mark > 0 && onScreen(p, e)) R.cuts.push(cutOn(e, SK.o.delay, SK.o.markDmg));
+    if (e.mark > 0 && onScreen(p, e)) R.cuts.push(cutOn(e, c.delay, SK.o.markDmg));
   }
   R.fx.push({ k: 'streak', x: p.x, y: p.y - 22, face: p.face, t: 0 });
   R.shake = Math.max(R.shake, 1);
@@ -643,14 +769,14 @@ function updateCuts(dt) {
     if (c.wait) continue;
     c.t += dt;
     if (c.done || c.t < c.delay) continue;
-    c.done = true;
+    c.done = true; snd('iaiCut');
     const col = c.red ? 'blood' : 'soul';
     for (const ln of c.lines) vfx('cut_' + col, c.x + ln.dx, c.y + ln.dy, { rot: ln.a + Math.PI / 4 });
     vfx((c.area || c.big ? 'exp2_' : 'exp1_') + col, c.x, c.y);
     if (c.area) {
       const box = { x0: c.x - c.w / 2, x1: c.x + c.w / 2, y0: c.y - c.h / 2, y1: c.y + c.h / 2 };
       for (const e of alive()) if (overlap(box, eBox(e))) strike(e, c.dmg, { skill: 'o', stun: SK.o.stun });
-    } else if (c.e) strike(c.e, c.dmg, { skill: 'o', stun: SK.o.stun });
+    } else if (c.e) strike(c.e, c.dmg, { skill: 'o', stun: SK.o.stun, mark: c.mk ? SK.u.mark : 0 });
     R.shake = Math.max(R.shake, 2);
   }
   R.cuts = R.cuts.filter((c) => !c.done || c.t < c.delay + 0.25);
@@ -661,7 +787,8 @@ function startStorm(p, red = false) {
   const list = alive().filter((e) => onScreen(p, e)).sort((a, b) => a.x - b.x).slice(0, SK.o.stormMax);
   if (!list.length) return false;
   if (Math.abs(list[list.length - 1].x - p.x) < Math.abs(list[0].x - p.x)) list.reverse();   // 从近的一端开始
-  p.storm = { list, i: 0, t: 0, red, cages: [] };
+  p.storm = { list, i: 0, t: 0, red, cages: [], w0: R.witch };
+  snd('storm', red ? { rate: 0.8 } : undefined);
   setSt(p, 'storm'); p.inv = 9; p.vx = 0; p.vy = 0;
   if (R.blade) R.blade = null;
   R.flash = 0.12; if (red) R.flashCol = '255,60,70';
@@ -678,10 +805,11 @@ function updateStorm(p, dt) {
     R.fx.push({ k: 'line', x: p.x, y: p.y - 20, x1: nx, y1: e.y - 20, t: 0 });
     p.x = nx; p.y = e.y; p.face = sign(e.x - p.x) || p.face;
     if (s.red) s.cages.push(vfx('prison', e.x, e.y, { ground: true, hold: [2, 3] }));   // 血狱：脚下炸出血棘牢笼，收刀时一起斩碎
-    for (let k = 0; k < SK.o.stormCuts; k++) {
-      const c = cutOn(e, 0, s.red ? TSK.stormDmg : SK.o.stormDmg, true);
-      c.big = k === SK.o.stormCuts - 1;   // 每只敌人最后一道带大爆炸
-      c.red = s.red;
+    const nCuts = s.red ? (mv('rageStormCuts') ? 5 : SK.o.stormCuts) : (mv('stormCuts5') ? 5 : SK.o.stormCuts);
+    for (let k = 0; k < nCuts; k++) {
+      const c = cutOn(e, 0, (s.red ? TSK.stormDmg : SK.o.stormDmg) * (!s.red && mv('iaiOnly') ? 1.6 : 1), true);
+      c.big = k === nCuts - 1;   // 每只敌人最后一道带大爆炸
+      c.red = s.red; c.mk = !!mv('stormMark');
       R.cuts.push(c);
     }
     R.shake = Math.max(R.shake, 1);
@@ -692,7 +820,7 @@ function updateStorm(p, dt) {
     for (const c of R.cuts) if (c.wait) { c.wait = false; c.t = 0; c.delay = 0.1 + (k++ % SK.o.stormCuts) * 0.06; }
     s.cages.forEach(releaseFx);
     p.inv = p.form === 'blood' ? p.inv : 0.4; p.storm = null;
-    R.witch = Math.min(R.witch, 0.3); R.stop = 0.08; R.shake = 5;
+    R.witch = !s.red && mv('stormKeep') ? Math.max(0.3, s.w0 * 0.5) : Math.min(R.witch, 0.3); R.stop = 0.08; R.shake = 5;
     buzz(80);
     p.ground = landOn(p, p.y, true) || p.y >= ROOM.ground;
     setSt(p, 'sheathe');
@@ -708,7 +836,7 @@ function transformWave(p) {
   R.flash = 0.12; R.flashCol = '255,60,70';
   R.shake = Math.max(R.shake, 4); R.stop = 0.08;
   buzz(60);
-  for (const e of alive()) if (onScreen(p, e)) strike(e, RAGE.wave * (e.mark > 0 ? 2 : 1), { launch: -200, kb: sign(e.x - p.x) * 120 });
+  for (const e of alive()) if (onScreen(p, e)) strike(e, RAGE.wave * (e.mark > 0 ? (mv('markBurst') ? 3 : 2) : 1), { launch: e.mark > 0 && mv('markBurst') ? -360 : -200, kb: sign(e.x - p.x) * 120 });
 }
 
 // 普攻刀气：血色月牙横穿半个屏幕，穿透
@@ -742,7 +870,7 @@ function updateRain(dt) {
   const r = R.rain;
   if (r) {
     r.t += dt; r.acc += dt;
-    while (r.acc >= TSK.rainGap && r.t < TSK.rainT) {
+    while (r.acc >= TSK.rainGap && r.t < TSK.rainT + mv('rainExtra')) {
       r.acc -= TSK.rainGap; r.k++;
       const tg = alive().filter((e) => onScreen(R.p, e));
       let x, y;
@@ -751,12 +879,12 @@ function updateRain(dt) {
       R.drops.push({ x, y, t: 0 });
       R.fx.push({ k: 'drop', x, y, t: 0, v: r.k % 3 });
     }
-    if (r.t >= TSK.rainT) R.rain = null;
+    if (r.t >= TSK.rainT + mv('rainExtra')) R.rain = null;
   }
   for (const d of R.drops) {
     d.t += dt;
     if (d.done || d.t < 0.1) continue;   // 墓碑落地那一刻才结算
-    d.done = true;
+    d.done = true; snd('rain');
     vfx('grave_break', d.x, d.y, { ground: true, delay: 0.1 });   // 插地 0.1 秒后碎开
     burst(d.x, d.y - 4, 6, { col: 'stone', a0: Math.PI, a1: Math.PI * 2, v1: 120 });
     const box = { x0: d.x - 14, x1: d.x + 14, y0: d.y - 34, y1: d.y + 4 };
@@ -825,7 +953,8 @@ function startFinisher(p) {
   vfx('burial', p.x + FIN.back * p.face, p.y, { ground: true, flip: p.face < 0, back: true });
 }
 function doFinisher(p) {
-  const dmg = TSK.finBase + R.rcombo * TSK.finCombo;
+  snd('finisher');
+  const dmg = TSK.finBase + R.rcombo * (mv('finFull') ? 2.5 : TSK.finCombo);
   for (const e of alive()) if (onScreen(p, e)) strike(e, dmg, { launch: -260, kb: sign(e.x - p.x) * 120 });
   const fx0 = p.x + (FIN.back + FIN.land) * p.face;
   burst(fx0, p.y - 6, 110, { a0: Math.PI, a1: Math.PI * 2, up: 60, v0: 80, v1: 320, life: 0.9 });
@@ -839,7 +968,13 @@ function doFinisher(p) {
 function hurtPlayer(p, dmg, fromX, src) {
   if (p.inv > 0 || p.st === 'dead') return false;
   if (p.form === 'blood') return true;   // 暴走中真正无敌：攻击直接无效（返回 true 让敌人这一扑算结算过）
-  p.hp = Math.max(0, p.hp - dmg);
+  if (R.M || R.cfg || (src && src.elite)) {
+    const skilling = ['thrust', 'throw', 'blink', 'iai', 'storm'].includes(p.st);
+    dmg = Math.max(1, Math.round(dmg * (R.cfg ? R.cfg.eMul.dmg : 1) * (src && src.elite ? 1.3 : 1) * (1 - Math.min(0.5, mv('reduce'))) * (skilling ? 1 - mv('castReduce') : 1)));
+  }
+  if (p.shield > 0) { const a = Math.min(p.shield, dmg); p.shield -= a; dmg -= a; }
+  p.pdStacks = 0; p.streak = 0;
+  p.hp = Math.max(0, p.hp - dmg); snd('hurt');
   p.soul = Math.max(0, p.soul - 1);   // 挨打掉 1 格魂
   const away = p.x < fromX ? -1 : 1;
   p.vx = away * 160; p.vy = -150; p.ground = false; p.coy = 0; p.inv = 0.9; p.combo = -1;
@@ -872,6 +1007,7 @@ function enemyDanger(e, p, pb, win, near) {
   switch (etype(e)) {
     case 'hound': return (e.st === 'leap' && overlap(pb, leapBox(e))) || (e.st === 'windup' && e.t > HOUND.windup - win && near);
     case 'skel': return (e.st === 'lunge' && overlap(pb, skelBox(e))) || (e.st === 'windup' && e.t > SKEL.windup - win && near);
+    case 'brute': return (e.st === 'slam' && overlap(pb, bruteBox(e))) || (e.st === 'windup' && e.t > BRUTE.windup - win && near);
     case 'ghost': return (e.st === 'shriek' && overlap(pb, shriekBox(e))) || (e.st === 'windup' && e.t > GHOST.windup - win && overlap(pb, shriekBox(e, 20)));
     case 'boss': return bossDanger(e, p, pb, win);
   }
@@ -881,11 +1017,18 @@ function triggerPerfect(p, e) {
   if (p.perfectUsed) return;
   p.perfectUsed = true;
   if (e) e.dodged = true;
-  gainSoul(1);
+  if (e && etype(e) === 'brute' && e.st !== 'stun') {   // 完美闪避重甲兵：护甲被晃开，晕 2.2 秒
+    e.st = 'stun'; e.t = 0; e.stunT = 2.2; e.vx = 0; R.fx.push({ k: 'spark', x: e.x, y: e.y - 30, t: 0, n: 12 });
+  }
+  gainSoul(1); snd('perfect');
+  if (p.st === 'thrust' && mv('thrustParry')) { gainSoul(1); p.cd.u = 0; }
+  if (mv('pdStack')) { p.pdStacks = Math.min(3, p.pdStacks + 1); p.pdT = 8; }
+  if (mv('pdCrit')) p.pdEye = 3;
+  if (mv('pdShield') && !mv('noShield')) p.shield = Math.round(p.mx * mv('pdShield'));
   R.fx.push({ k: 'ring', x: p.x, y: p.y - 18, t: 0 });
   buzz(40);
   if (R.witch > 0) return;
-  R.witch = WITCH_T; R.banner = 1.2; R.stop = 0.06; R.flash = 0.15;
+  R.witch = WITCH_T + mv('pdSlow'); R.banner = 1.2; R.stop = 0.06; R.flash = 0.15;
   R.fx.push({ k: 'pulse', x: p.x, y: p.y - 18, t: 0 });
 }
 
@@ -894,6 +1037,7 @@ function spawnEnemy(type, x, y, o = {}) {
   const e = { type, x, y, vx: 0, vy: 0, face: -1, hp: EMAX[type], maxHp: EMAX[type], st: 'patrol', t: 0, flash: 0, home: x, pdir: -1, ground: true,
     hitPlayer: false, an: rnd(0, 1), mark: 0, stunT: 0.28, cd: rnd(0.6, 1.6), ...o };
   if (type === 'skel') { e.st = 'rise'; e.skin = Math.random() < 0.5 ? 'skelc' : 'skel'; }
+  else if (type === 'brute') { e.st = 'rise'; e.skin = 'skelc'; }
   else if (type === 'ghost') { e.st = 'drift'; e.ground = false; }
   else if (type === 'wiz') e.st = 'idle';
   R.en.push(e);
@@ -904,6 +1048,7 @@ const leapBox = (e) => ({ x0: e.x - 20, x1: e.x + 20, y0: e.y - 28, y1: e.y });
 
 function hurtEnemy(e, dmg, kb, launch, o = {}) {
   e.hp -= dmg; e.flash = 0.12;
+  if (e.hp > 0) snd(o.crit ? 'hitCrit' : 'hit'); else if (!e.boss) snd('kill');
   R.nums.push({ x: e.x + rnd(-10, 10), y: e.y - 34 - rnd(0, 8), v: dmg, c: o.crit ? '#ffd23a' : '#fff2c0', big: o.crit, t: 0 });   // 抖开，挤在一起的敌人数字不糊成一团
   vfx('hit_' + tint(), e.x + rnd(-4, 4), e.y - 14 + rnd(-4, 4), { rot: rnd(0, 6.28) });
   if (o.crit) vfx('exp1_' + tint(), e.x, e.y - 16);
@@ -912,10 +1057,16 @@ function hurtEnemy(e, dmg, kb, launch, o = {}) {
     e.st = 'dead'; R.kills++;
     R.fx.push({ k: 'death', x: e.x, y: e.y, t: 0 });
     vfx('exp6_' + tint(), e.x, e.y - 16);
-    if (R.p.form === 'blood') R.p.rage = Math.min(R.p.rageMax, R.p.rage + RAGE.killAdd);   // 暴走中越杀越久
+    if (e.elite) { gainSoul(1); say('精英击破　魂 +1', '#ffd23a'); }
+    if (R.p.form === 'blood') R.p.rage = Math.min(R.p.rageMax, R.p.rage + (mv('soloRage') ? 0 : RAGE.killAdd + mv('killAddPlus')));   // 暴走中越杀越久
+    if (mv('killHeal')) R.p.hp = Math.min(R.p.mx, R.p.hp + Math.round(R.p.mx * mv('killHeal') / 100));
     return;
   }
   if (e.boss) return;   // 霸体
+  if (etype(e) === 'brute') {   // 重甲兵不被打断；突刺穿过去能把护甲打碎、晃晕一会儿
+    if (o.breakArmor && e.st !== 'stun') { e.st = 'stun'; e.t = 0; e.stunT = o.breakArmor; e.vx = 0; R.fx.push({ k: 'spark', x: e.x, y: e.y - 30, t: 0, n: 9 }); }
+    return;
+  }
   e.vx = kb;
   if (launch) { e.vy = launch; e.ground = false; e.st = 'air'; e.t = 0; }
   else if (e.st === 'air') { e.vy = Math.min(e.vy, -120); }
@@ -934,7 +1085,7 @@ function enemyHits(e, p, box, dmg) {
 }
 // 预警闪白那一刻手机轻震，眼睛没盯着也能靠手感反应
 function tellBuzz(e, p, windup) {
-  if (!e.buzzed && e.t > windup * 0.72 && Math.abs(p.x - e.x) < 160 && Math.abs(p.y - e.y) < 60) { e.buzzed = true; buzz(20); }
+  if (!e.buzzed && e.t > windup * 0.72 && Math.abs(p.x - e.x) < 160 && Math.abs(p.y - e.y) < 60) { e.buzzed = true; buzz(20); snd('tell'); }
 }
 // 受击共用状态：眩晕 / 被血爪拎着 / 被打飞。返回 true 表示这一帧已处理完
 function sharedState(e, dt, wake) {
@@ -955,10 +1106,11 @@ function sharedState(e, dt, wake) {
 }
 
 function enemyUpdate(e, p, dt) {
-  e.t += dt; e.flash -= dt; e.an += dt; e.cd -= dt; e.mark = Math.max(0, e.mark - dt);
+  e.t += dt; e.flash -= dt; e.an += dt; e.cd -= dt; e.mark = Math.max(0, e.mark - dt); e.armorT = Math.max(0, (e.armorT || 0) - dt);
   const T = etype(e);
   if (T === 'hound') houndAI(e, p, dt);
   else if (T === 'skel') skelAI(e, p, dt);
+  else if (T === 'brute') bruteAI(e, p, dt);
   else if (T === 'ghost') ghostAI(e, p, dt);
   else if (T === 'wiz') wizAI(e, p, dt);
   else if (T === 'boss') bossAI(e, p, dt);
@@ -985,7 +1137,7 @@ function houndAI(e, p, dt) {
     case 'windup':
       e.vx = 0; e.face = sign(dx) || e.face;
       tellBuzz(e, p, HOUND.windup);
-      if (e.t >= HOUND.windup) { e.st = 'leap'; e.t = 0; e.vx = e.face * HOUND.leapVx; e.vy = HOUND.leapVy; e.ground = false; e.hitPlayer = false; }
+      if (e.t >= HOUND.windup) { snd('houndLeap'); e.st = 'leap'; e.t = 0; e.vx = e.face * HOUND.leapVx; e.vy = HOUND.leapVy; e.ground = false; e.hitPlayer = false; }
       break;
     case 'leap':
       enemyHits(e, p, leapBox(e), HOUND.dmg);
@@ -1015,7 +1167,7 @@ function skelAI(e, p, dt) {
     case 'windup':
       e.vx = 0; e.face = sign(dx) || e.face;
       tellBuzz(e, p, SKEL.windup);
-      if (e.t >= SKEL.windup) { e.st = 'lunge'; e.t = 0; e.vx = e.face * SKEL.lungeV; e.hitPlayer = false; }
+      if (e.t >= SKEL.windup) { snd('skelLunge'); e.st = 'lunge'; e.t = 0; e.vx = e.face * SKEL.lungeV; e.hitPlayer = false; }
       break;
     case 'lunge':
       enemyHits(e, p, skelBox(e), SKEL.dmg);
@@ -1024,6 +1176,39 @@ function skelAI(e, p, dt) {
     case 'recover':
       e.vx *= Math.pow(0.001, dt);
       if (e.t >= SKEL.recover) { e.st = 'chase'; e.t = 0; e.cd = 0.5; }
+      break;
+  }
+}
+
+const bruteBox = (e) => ({ x0: e.x + (e.face > 0 ? -10 : -72), x1: e.x + (e.face > 0 ? 72 : 10), y0: e.y - 44, y1: e.y });
+function bruteAI(e, p, dt) {
+  const dx = p.x - e.x, dy = p.y - e.y;
+  if (sharedState(e, dt, 'chase')) return;
+  switch (e.st) {
+    case 'rise':
+      e.vx = 0;
+      if (e.t >= SKEL.rise) { e.st = 'chase'; e.t = 0; }
+      break;
+    case 'chase':
+      e.face = sign(dx) || e.face;
+      e.vx = Math.abs(dx) > 8 && !R.dead ? e.face * BRUTE.walk : 0;
+      if (Math.abs(dx) < BRUTE.reach && Math.abs(dy) < 30 && e.cd <= 0) { e.st = 'windup'; e.t = 0; e.vx = 0; e.dodged = false; e.buzzed = false; }
+      break;
+    case 'windup':
+      e.vx = 0; e.face = sign(dx) || e.face;
+      tellBuzz(e, p, BRUTE.windup);
+      if (e.t >= BRUTE.windup) {
+        e.st = 'slam'; e.t = 0; e.hitPlayer = false; R.shake = Math.max(R.shake, 3); snd('bossLand', { gain: 0.55, rate: 1.25 });
+        burst(e.x + e.face * 40, e.y - 4, 22, { col: 'stone', a0: Math.PI, a1: Math.PI * 2, v1: 220 });
+      }
+      break;
+    case 'slam':
+      enemyHits(e, p, bruteBox(e), BRUTE.dmg);
+      if (e.t >= BRUTE.slamT) { e.st = 'recover'; e.t = 0; }
+      break;
+    case 'recover':   // 落空后的破绽：护甲失效，吃全伤
+      e.vx = 0;
+      if (e.t >= BRUTE.recover) { e.st = 'chase'; e.t = 0; e.cd = 0.8; }
       break;
   }
 }
@@ -1060,7 +1245,7 @@ function ghostAI(e, p, dt) {
       break;
     case 'windup':
       tellBuzz(e, p, GHOST.windup);
-      if (e.t >= GHOST.windup) { e.st = 'shriek'; e.t = 0; e.hitPlayer = false; R.fx.push({ k: 'shriek', x: e.x, y: e.y - 24, t: 0 }); }
+      if (e.t >= GHOST.windup) { e.st = 'shriek'; e.t = 0; e.hitPlayer = false; R.fx.push({ k: 'shriek', x: e.x, y: e.y - 24, t: 0 }); snd('ghostShriek'); }
       break;
     case 'shriek':
       enemyHits(e, p, shriekBox(e), GHOST.dmg);
@@ -1098,7 +1283,7 @@ const diveBox = (e, pad = 0) => ({ x0: e.x - BOSS.dive.radius - pad, x1: e.x + B
 function spawnBoss() {
   const x = clamp(R.p.x + 240, 200, ROOM.w - 200);
   const e = spawnEnemy('boss', x, ROOM.ground, { boss: true, st: 'intro', sub: 0, face: sign(R.p.x - x), sumT: 0 });
-  say(`${BOSS.name}　降临`, '#ff6a6a');
+  say(`${BOSS.name}　降临`, '#ff6a6a'); snd('bossRoar');
   R.shake = 5; R.flash = 0.15; R.flashCol = '255,60,70'; buzz(80);
   burst(e.x, e.y - 4, 40, { col: 'stone', a0: Math.PI, a1: Math.PI * 2, v1: 260 });
   return e;
@@ -1112,11 +1297,11 @@ function bossDanger(e, p, pb, win) {
 }
 function bossIdle(e) { e.st = 'idle'; e.t = 0; e.sub = 0; }
 function bossRecover(e, t) { e.st = 'recover'; e.t = 0; e.recT = t; e.vx = 0; }
-function bossStart(e, st) { e.st = st; e.t = 0; e.sub = 0; e.vx = 0; e.dodged = false; e.buzzed = false; e.hitPlayer = false; }
+function bossStart(e, st) { if (st === 'charge') snd('bossCharge'); e.lastMove = st; e.st = st; e.t = 0; e.sub = 0; e.vx = 0; e.dodged = false; e.buzzed = false; e.hitPlayer = false; }
 // 选招：同一层且贴近 → 吐息 / 冲撞；离得远或不在同一层 → 天降 / 冲撞；狂怒后定期召唤
 function bossPick(e, p) {
   const adx = Math.abs(p.x - e.x), same = Math.abs(p.y - e.y) < 40;
-  if (e.p2 && e.sumT <= 0) return bossStart(e, 'summon');
+  if ((e.p2 || e.variant === 'brood') && e.sumT <= 0) return bossStart(e, 'summon');
   e.face = sign(p.x - e.x) || e.face;
   const r = Math.random();
   if (same && adx < 150) bossStart(e, r < 0.6 ? 'breath' : 'charge');
@@ -1126,7 +1311,7 @@ function bossPick(e, p) {
 function bossAI(e, p, dt) {
   const B = BOSS, f = bossF(e), dx = p.x - e.x;
   e.sumT -= dt;
-  if (!e.p2 && e.hp <= e.maxHp * B.phase2) { e.p2 = true; e.sumT = 0; say(`${B.name}　狂怒`, '#ff6a6a'); R.shake = 4; }
+  if (!e.p2 && e.hp <= e.maxHp * B.phase2) { e.p2 = true; e.sumT = 0; say(`${B.name}　狂怒`, '#ff6a6a'); R.shake = 4; snd('bossRoar', { rate: 0.85 }); }
   switch (e.st) {
     case 'intro':
       e.vx = 0;
@@ -1152,7 +1337,7 @@ function bossAI(e, p, dt) {
       if (e.sub === 0) {
         e.vx = 0;
         tellBuzz(e, p, wind);
-        if (e.t >= wind) { e.sub = 1; e.t = 0; R.shake = Math.max(R.shake, 2); }
+        if (e.t >= wind) { e.sub = 1; e.t = 0; R.shake = Math.max(R.shake, 2); snd('bossBreath'); }
       } else {
         if (e.t > 0.08 && e.t < B.breath.fire - 0.1) enemyHits(e, p, breathBox(e), B.breath.dmg);
         if (e.t >= B.breath.fire) bossRecover(e, B.breath.recover);
@@ -1172,7 +1357,7 @@ function bossAI(e, p, dt) {
         if (e.t >= B.dive.track * f) { e.sub = 2; e.t = 0; e.vy = B.dive.fall; }
       } else if (e.ground) {
         enemyHits(e, p, diveBox(e), B.dive.dmg);
-        R.shake = 6; R.stop = Math.max(R.stop, 0.05); buzz(60);
+        R.shake = 6; R.stop = Math.max(R.stop, 0.05); buzz(60); snd('bossLand');
         for (const k of [-1, 0, 1]) vfx('exp2_blood', e.x + k * 44, e.y + 4, { ground: true, delay: Math.abs(k) * 0.05 });
         burst(e.x, e.y - 4, 50, { col: 'stone', a0: Math.PI, a1: Math.PI * 2, v1: 300 });
         bossRecover(e, B.dive.recover);
@@ -1181,7 +1366,7 @@ function bossAI(e, p, dt) {
     case 'summon':   // 后仰召唤：主角身边的地里爬出骷髅
       e.vx = 0;
       if (e.sub === 0 && e.t >= 0.4) {
-        e.sub = 1; e.sumT = B.summon.cd;
+        e.sub = 1; e.sumT = e.variant === 'brood' ? 9 : B.summon.cd;
         for (let k = 0; k < B.summon.n; k++) spawnEnemy('skel', clamp(p.x + (k - 1) * 70 + 35, 40, ROOM.w - 40), ROOM.ground);
         R.shake = 3;
       }
@@ -1194,25 +1379,28 @@ function bossAI(e, p, dt) {
   }
 }
 function bossDown(e) {
+  snd('bossDown');
   e.st = 'dead'; R.kills++;
   R.stop = 0.35; R.shake = 8; R.flash = 0.15; R.flashCol = '255,220,160'; buzz(120);
   for (let k = 0; k < 5; k++) vfx('exp2_blood', e.x + rnd(-40, 40), e.y - rnd(10, 90), { delay: k * 0.08 });
   burst(e.x, e.y - 50, 120, { col: 'stone', v1: 360, life: 1.1 });
-  R.fx.push({ k: 'death', x: e.x, y: e.y, t: 0 });
+  R.fx.push({ k: 'bdead', x: e.x, y: e.y, face: e.face, t: 0, life: 2.4 });
   say(`击败 ${BOSS.name}`, '#ffd23a');
+  if (mv('ultKill')) gainSoul(2);
   R.waveT = 4;
   for (const o of R.en) if (o !== e && o.type === 'skel') hurtEnemy(o, o.hp, 0, -200);   // 召来的骷髅一起散架
 }
 
 /* 火球：朝主角当前位置直线飞；普攻打中会反弹，反弹后专打敌人 */
 function fireball(e, p) {
+  snd('fireball');
   const x = e.x + e.face * 16, y = e.y - 36, tx = p.x, ty = p.y - 18, d = Math.hypot(tx - x, ty - y) || 1;
   R.eshots.push({ x, y, vx: (tx - x) / d * WIZ.ballV, vy: (ty - y) / d * WIZ.ballV, t: 0, refl: false });
 }
 function reflectBalls(p, box) {
   for (const b of R.eshots) {
     if (b.refl || !overlap(box, { x0: b.x - 8, x1: b.x + 8, y0: b.y - 8, y1: b.y + 8 })) continue;
-    b.refl = true; b.t = 0; b.vx = p.face * WIZ.reflectV; b.vy = 0;
+    b.refl = true; b.t = 0; b.vx = p.face * WIZ.reflectV; b.vy = 0; snd('reflect');
     vfx('hit_' + tint(), b.x, b.y);
     R.stop = Math.max(R.stop, 0.06); buzz(20);
   }
@@ -1239,7 +1427,8 @@ function groundPhys(e, dt) {
   e.vy = Math.min(P_MAXFALL, e.vy + P_GRAV * (e.st === 'air' ? 0.75 : 1) * dt);
   e.x = clamp(e.x + e.vx * dt, 16, ROOM.w - 16);
   e.y += e.vy * dt;
-  e.ground = landOn(e, prevY, false);
+  e.ground = e.boss ? e.y >= ROOM.ground : landOn(e, prevY, false);   // Boss 不踩平台，天降一律砸在地面
+  if (e.boss && e.y >= ROOM.ground) e.y = ROOM.ground;
   if (e.ground) e.vy = 0;
   // 平台边缘：巡逻时掉头，不主动跳下
   if (e.ground && e.st === 'patrol' && e.y < ROOM.ground) {
@@ -1263,8 +1452,17 @@ const MIX = ['skel', 'hound', 'skel', 'ghost', 'wiz', 'skel', 'hound'];
 function spawnWave() {
   R.wave++;
   if (R.wave === BOSS.wave) { spawnBoss(); return; }
-  const list = WAVES[R.wave - 1] || Array.from({ length: 2 + Math.min(R.wave, 8) }, (_, i) => MIX[(i + R.wave) % MIX.length]);
-  list.forEach((type, i) => {
+  spawnList(WAVES[R.wave - 1] || Array.from({ length: 2 + Math.min(R.wave, 8) }, (_, i) => MIX[(i + R.wave) % MIX.length]));
+}
+function spawnList(list) {   // 肉鸽战斗里分批刷出，不是一股脑全出现；自由试玩立刻刷
+  list.forEach((type, i) => { if (R.cfg) R.pend.push({ t: 0.15 + i * 0.35, type, i }); else spawnOne(type, i); });
+}
+function spawnOne(type, i) {
+  const n0 = R.en.length;
+  const el = type[0] === '*';   // 星号 = 精英：血 ×1.8、伤害 ×1.3、金边，击杀 +1 魂
+  if (el) type = type.slice(1);
+  {
+    if (type === 'boss') { spawnBoss(); scaleNew(n0); return; }
     const pl = ROOM.plats[(i * 3 + R.wave) % ROOM.plats.length];
     if (type === 'wiz') {   // 巫师站高台
       const hi = ROOM.plats.filter((q) => q.y < 400);
@@ -1273,13 +1471,18 @@ function spawnWave() {
     } else if (type === 'skel') {   // 骷髅在主角附近的地里爬出来
       const side = i % 2 ? 1 : -1;
       spawnEnemy('skel', clamp(R.p.x + side * (110 + i * 36), 40, ROOM.w - 40), ROOM.ground);
+    } else if (type === 'brute') {   // 重甲兵：离主角远一点的地里爬出来
+      const side = i % 2 ? 1 : -1;
+      spawnEnemy('brute', clamp(R.p.x + side * (170 + i * 30), 40, ROOM.w - 40), ROOM.ground);
     } else if (type === 'ghost') {
       spawnEnemy('ghost', 300 + ((i * 613 + R.wave * 251) % (ROOM.w - 600)), ROOM.ground - 90);
     } else {
       const useP = i % 2 === 1;
       spawnHound(useP ? pl.x + pl.w / 2 : 500 + ((i * 457 + R.wave * 211) % (ROOM.w - 700)), useP ? pl.y : ROOM.ground);
     }
-  });
+  }
+  if (el) for (const e of R.en.slice(n0)) e.elite = true;
+  scaleNew(n0);
 }
 
 /* ---------- 绘制 ---------- */
@@ -1312,12 +1515,12 @@ function heroFrame(p) {
     case 'plunge': return ['plunge', p.t < 0.06 ? 0 : 1];
     case 'hurt': return f('hurt', 10, false, 2, 2);
     case 'dead': return f('death', 6, false);
-    case 'thrust': return f('u_thrust', 13, false);
-    case 'throw': return f('i_throw', 12, false);
-    case 'blink': return ['blink', p.t < 0.07 ? 0 : 1];
-    case 'iai': return f('o_iai', 14, false);
+    case 'thrust': return f('u_thrust', 38, false);
+    case 'throw': return f('i_throw', 24, false);
+    case 'blink': return f('blink', 28, false);
+    case 'iai': return f('o_iai', 29, false);
     case 'storm': return blood ? ['t_sweep', 1 + (Math.floor(p.t * 20) % 2)] : ['blink', 0];
-    case 'sheathe': return blood ? ['t_idle', 0] : ['o_iai', 3];
+    case 'sheathe': return blood ? ['t_idle', 0] : ['o_iai', 11];
     case 'transform': return f('transform', 12, false);
     case 'rdash': return ['t_sweep', 0];
     case 'train': return f('t_drop', T_FPS, false);
@@ -1383,11 +1586,23 @@ const EANIM = {   // 帧数、帧宽、帧高
   'skel-atk': [4, 50, 47, 21], 'skelc-atk': [4, 50, 47, 21],   // 第 4 个数：锚点（脚下）在帧内的 x，缺省取帧中心
   'ghost-idle': [7, 64, 80], 'ghost-appears': [6, 64, 48], 'ghost-shriek': [4, 64, 80], 'ghost-vanish': [7, 64, 64],
   'wiz-idle': [5, 81, 66], 'wiz-fire': [10, 81, 66], fireball: [3, 26, 26],
-  'boss-idle': [6, 160, 144, 62, 127], 'boss-atk': [8, 192, 176, 87, 168], 'boss-fire': [5, 160, 96],   // 第 5 个数：脚底在帧内的 y
+  'boss-idle': [6, 160, 144, 62, 127], 'boss-atk': [8, 192, 176, 87, 168], 'boss-fire': [5, 160, 96],
+  // 专属招式帧（朝右，第 6 个数 1 = 朝右素材，画的时候再镜像）
+  'boss-charge': [8, 149, 132, 75, 131, 1], 'boss-breath': [8, 138, 143, 75, 142, 1], 'boss-dive': [8, 183, 149, 99, 148, 1],
+  'boss-summon': [4, 198, 146, 99, 144, 1], 'boss-stagger': [2, 198, 146, 99, 145, 1], 'boss-hit': [2, 198, 146, 99, 144, 1], 'boss-dead': [4, 198, 146, 99, 145, 1],   // 第 5 个数：脚底在帧内的 y
 };
 function enemyFrame(e) {
   const run = (n, fps) => Math.floor(e.an * fps) % n, once = (n, fps) => Math.min(n - 1, Math.floor(e.t * fps));
   switch (etype(e)) {
+    case 'brute': {
+      const k = e.skin || 'skelc';
+      if (e.st === 'rise') return [k + '-rise', once(6, 6 / SKEL.rise)];
+      if (e.st === 'chase') return [k + '-walk', run(8, 6)];
+      if (e.st === 'windup') return [k + '-atk', e.t < BRUTE.windup * 0.5 ? 0 : 1];
+      if (e.st === 'slam') return [k + '-atk', 2];
+      if (e.st === 'recover' && e.t < 0.3) return [k + '-atk', 3];
+      return [k + '-walk', 2];
+    }
     case 'skel': {
       const k = e.skin || 'skel';
       if (e.st === 'rise') return [k + '-rise', once(6, 6 / SKEL.rise)];
@@ -1408,19 +1623,35 @@ function enemyFrame(e) {
       if (e.st === 'cast') return ['wiz-fire', once(10, WIZ.castFps)];
       return ['wiz-idle', run(5, 8)];
     case 'boss': {
-      const f = bossF(e);
-      if (e.st === 'charge') return ['boss-atk', e.sub === 0 ? Math.min(2, Math.floor(e.t / (BOSS.charge.windup * f) * 3)) : 3 + (Math.floor(e.t * 12) % 2)];
-      if (e.st === 'breath') return ['boss-atk', e.sub === 1 ? 7 : e.t < BOSS.breath.crouch * f ? Math.min(2, Math.floor(e.t / (BOSS.breath.crouch * f) * 3)) : 6];
-      if (e.st === 'dive') return e.sub === 2 ? ['boss-atk', 6] : ['boss-idle', run(6, 14)];
-      if (e.st === 'summon') return ['boss-atk', 6 + (Math.floor(e.t * 8) % 2)];
-      if (e.st === 'recover') return ['boss-atk', 5];
+      const f = bossF(e), B = BOSS, prog = (d) => Math.min(0.999, e.t / d);
+      switch (e.st) {
+        case 'charge':
+          if (e.sub === 0) return ['boss-charge', Math.min(2, Math.floor(prog(B.charge.windup * f) * 3))];
+          return ['boss-charge', 3 + (Math.floor(e.t * 12) % 2)];
+        case 'breath':
+          if (e.sub === 0) return ['boss-breath', Math.min(3, Math.floor(prog((B.breath.crouch + B.breath.rear) * f) * 4))];
+          return ['boss-breath', e.t < 0.15 ? 4 : 5];
+        case 'dive':
+          if (e.sub === 0) return ['boss-dive', e.t < B.dive.rise * 0.5 ? 0 : 1];
+          if (e.sub === 1) return ['boss-dive', 2 + (Math.floor(e.t * 8) % 2)];
+          return ['boss-dive', 4];
+        case 'summon': return ['boss-summon', e.sub === 0 ? Math.min(2, Math.floor(e.t / 0.4 * 3)) : 3];
+        case 'recover': {   // 先播刚才那招的收势，再进入「破绽」喘息
+          const lm = e.lastMove;
+          if (lm === 'charge' && e.t < 0.45) return ['boss-charge', 5 + Math.min(2, Math.floor(e.t / 0.15))];
+          if (lm === 'breath' && e.t < 0.3) return ['boss-breath', 6 + Math.min(1, Math.floor(e.t / 0.15))];
+          if (lm === 'dive' && e.t < 0.45) return ['boss-dive', 5 + Math.min(2, Math.floor(e.t / 0.15))];
+          return ['boss-stagger', Math.floor(e.t * 4) % 2];
+        }
+      }
+      if (e.flash > 0 && e.st === 'idle') return ['boss-hit', 0];
       return ['boss-idle', run(6, 8)];
     }
   }
   return null;
 }
 const EWIND = {
-  skel: () => SKEL.windup, ghost: () => GHOST.windup, wiz: () => WIZ.release / WIZ.castFps,
+  skel: () => SKEL.windup, brute: () => BRUTE.windup, ghost: () => GHOST.windup, wiz: () => WIZ.release / WIZ.castFps,
   boss: (e) => bossF(e) * (e.st === 'charge' ? BOSS.charge.windup : e.st === 'breath' ? BOSS.breath.crouch + BOSS.breath.rear : BOSS.dive.track),
 };
 function enemyTelling(e) {
@@ -1432,27 +1663,36 @@ function drawEnemy(e, cx, cy) {
   if (T === 'hound') return drawHound(e, cx, cy);
   const fr = enemyFrame(e);
   if (!fr) return;
-  const [name, i] = fr, [, fw, fh, ax = fw / 2, ay = fh] = EANIM[name], im = rImg(`gv/enemies/${name}.png`);
+  const [name, i] = fr, [, fw, fh, ax = fw / 2, ay = fh, right] = EANIM[name], im = rImg(`gv/enemies/${name}.png`);
   if (!ready(im)) return;
   const bx = Math.round(e.x - cx), by = Math.round(e.y - cy), win = EWIND[T](e), tell = enemyTelling(e);
   if (T === 'boss' && e.st === 'dive' && e.sub === 1) drawDiveMark(e, bx, Math.round((e.markY ?? ROOM.ground) - cy), win);
   rx.save();
   rx.translate(bx, by + 1);
-  if (e.face > 0) rx.scale(-1, 1);   // 素材都朝左
+  const sc = T === 'brute' ? BRUTE.scale : 1;
+  rx.scale(e.face > 0 ? -sc : sc, sc);   // 素材都朝左
   if (tell) {
     const k = e.t / win;
     rx.filter = k > 0.72 ? 'brightness(2.6)' : `sepia(1) saturate(6) hue-rotate(-30deg) brightness(${1 + 0.6 * Math.abs(Math.sin(e.t * 18))})`;
   } else if (e.flash > 0) rx.filter = 'brightness(3)';
+  else if (T === 'brute') rx.filter = ['stun', 'recover'].includes(e.st) ? 'brightness(1.15) saturate(1.2)' : 'brightness(0.8) saturate(0.4) drop-shadow(0 0 2px rgba(140,180,255,0.95))';   // 带甲：灰蓝描边；破甲后恢复本色
+  else if (e.elite) rx.filter = 'brightness(1.25) drop-shadow(0 0 2px rgba(255,210,60,0.95))';
   else if (T === 'ghost') rx.filter = 'brightness(1.5) drop-shadow(0 0 2px rgba(120,220,255,0.9))';   // 黑袍贴着暗背景看不清，描一圈青光
   else if (T === 'boss') rx.filter = e.st === 'recover' ? 'brightness(1.4) drop-shadow(0 0 3px rgba(255,220,120,0.95))' : 'brightness(1.3) drop-shadow(0 0 2px rgba(255,60,70,0.9))';   // 黑身子描红边；破绽时描金边
+  if (right) rx.scale(-1, 1);   // 新招式帧朝右：在「朝左」的局部坐标里再镜像一次
   rx.drawImage(im, i * fw, 0, fw, fh, -ax, -ay, fw, fh);
+  if (right) rx.scale(-1, 1);
   if (T === 'boss' && e.st === 'breath' && e.sub === 1) {   // 贴地喷火：火焰条右端接在嘴边
     const fim = rImg('gv/enemies/boss-fire.png'), k = Math.min(4, Math.floor(e.t / BOSS.breath.fire * 5));
-    if (ready(fim)) rx.drawImage(fim, k * 160, 0, 160, 96, -139, -72, 160, 96);
+    if (ready(fim)) rx.drawImage(fim, k * 160, 0, 160, 96, -142, -95, 92, 96);   // 从新喷火帧的嘴边出发，长度与判定框 136 对齐
   }
   rx.restore();
   if (T === 'boss') { drawBossTell(e, bx, by, tell, win); return; }
   const top = ETOP[T];
+  if (T === 'brute' && e.st === 'windup') {   // 砸地范围：脚下一片闪烁的红色
+    rx.fillStyle = e.t > BRUTE.windup * 0.72 ? 'rgba(255,255,255,0.7)' : `rgba(255,50,50,${0.25 + 0.25 * Math.abs(Math.sin(e.t * 18))})`;
+    rx.fillRect(e.face > 0 ? bx - 10 : bx - 72, by - 44, 82, 44);
+  }
   if (T === 'skel' && e.st === 'windup') {   // 地上一道闪烁的红线：前扑会扑到哪
     rx.fillStyle = e.t > SKEL.windup * 0.72 ? 'rgba(255,255,255,0.8)' : `rgba(255,50,50,${0.35 + 0.3 * Math.abs(Math.sin(e.t * 18))})`;
     rx.fillRect(e.face > 0 ? bx : bx - 40, by - 1, 40, 2);
@@ -1679,6 +1919,13 @@ function drawFx(cx, cy, back = false) {
       rx.translate(x, y + 1); if (f.face < 0) rx.scale(-1, 1);
       rx.drawImage(im, m.fw, 0, m.fw, m.fh, -Math.round(m.anchorX), -m.fh, m.fw, m.fh);
       rx.restore();
+    } else if (f.k === 'bdead') {
+      const im = rImg('gv/enemies/boss-dead.png'), m = EANIM['boss-dead'];
+      if (!ready(im)) continue;
+      rx.save(); rx.globalAlpha = clamp((f.life - f.t) / 0.6, 0, 1);
+      rx.translate(x, y + 1); if (f.face < 0) rx.scale(-1, 1);   // 素材朝右
+      rx.drawImage(im, Math.min(3, Math.floor(f.t * 6)) * m[1], 0, m[1], m[2], -m[3], -m[4], m[1], m[2]);
+      rx.restore();
     } else if (f.k === 'death') {
       const im = rImg('gv/enemy-death.png'); const i = Math.floor(f.t * 14);
       if (i >= 5 || !ready(im)) continue;
@@ -1829,7 +2076,7 @@ function btnState(id) {
     case 's3':
       if (b) return { label: '狱', cd: cdk('o') };
       return R.witch > 0 ? { label: '狱', cd: cdk('o') } : { label: '断', cd: cdk('o') };
-    case 's4': return b ? { label: '葬' } : { label: '契', off: p.soul < RAGE.minSoul };
+    case 's4': return b ? { label: '葬' } : { label: '契', off: p.soul < rageNeed() || mv('sealIdx', -1) === 3 };
     case 'dodge': return { label: b ? '影' : '闪' };
   }
   return null;
@@ -1863,6 +2110,7 @@ function drawSkillBar(x, y) {
 const roomScene = {
   wide: true, touch: true, btnState,
   enter() {
+    R.cfg = pendingCfg; pendingCfg = null;
     rReset();
     preload(['gv/cemetery/background.png', 'gv/cemetery/mountains.png', 'gv/cemetery/graveyard.png', 'gv/cemetery/tileset.png',
       'gv/enemy-death.png', ...Object.keys(HOUND.anim).map((a) => `gv/hound/hell-hound-${a}.png`), ...Object.keys(EANIM).map((n) => `gv/enemies/${n}.png`),
@@ -1870,8 +2118,8 @@ const roomScene = {
       ...Object.keys(VFX).map((n) => `vfx/${n}.png`), 'hero2/cutin_laugh.png']);
   },
   update(dt) {
-    if (input.hit('pause')) { setScene(titleScene); return; }
-    if (R.dead && (input.hit('restart') || pulse.has('tap'))) { rReset(); return; }
+    if (input.hit('pause') && !R.cfg) { setScene(titleScene); return; }
+    if (R.dead && !R.cfg && (input.hit('restart') || pulse.has('tap'))) { rReset(); return; }
     if (window.touchUI && touchUI.menu) return;
     if (params.get('demo')) demoInput(dt);
     syncWidth();
@@ -1882,7 +2130,9 @@ const roomScene = {
     bufferInput(R.p, dt);
     if (R.stop > 0) { R.stop -= dt; return; }
     const p = R.p;
+    const w0 = R.witch;
     if (p.st !== 'storm') R.witch = Math.max(0, R.witch - dt);   // 瞬狱穿梭期间断裂时间暂停
+    if (w0 > 0 && R.witch <= 0) snd('witchEnd');
     const edt = dt * (R.witch > 0 ? WITCH_SLOW : 1) * (p.form === 'blood' ? RAGE.slow : 1);   // 暴走中全场敌人半速
     playerUpdate(p, dt);
     updateBlade(dt);
@@ -1901,7 +2151,9 @@ const roomScene = {
     R.fx = R.fx.filter((f) => f.t < (f.life ? f.life + (f.delay || 0) : 0.6));
     for (const n of R.nums) n.t += dt;
     R.nums = R.nums.filter((n) => n.t < 0.7);
-    if (!R.en.length && !R.dead) { R.waveT -= dt; if (R.waveT <= 0) { spawnWave(); R.waveT = 2; } }
+    if (R.pend.length) { for (const q of R.pend) q.t -= dt; for (const q of R.pend.filter((q) => q.t <= 0)) spawnOne(q.type, q.i); R.pend = R.pend.filter((q) => q.t > 0); }
+    if (R.cfg) runWaves(dt);
+    else if (!R.en.length && !R.dead) { R.waveT -= dt; if (R.waveT <= 0) { spawnWave(); R.waveT = 2; } }
     // 镜头：朝向前方留出视野，纵向只在离开中间区域时才跟
     const c = R.cam;
     const tx = p.x - RB_W / 2 + p.face * 50;
@@ -1953,6 +2205,7 @@ const roomScene = {
     const tc = touchOn(), sl = tc ? touchUI.safe.l : 0;
     pxBar(24 + sl, 20, 300, 18, p.hp / p.mx, '#d0384a');
     drawText(`生命 ${p.hp}/${p.mx}`, 24 + sl, 64, 24, '#f0e6f6');
+    if (p.shield > 0) drawText(`盾 ${p.shield}`, 24 + sl + 220, 64, 24, '#8fd8ff');
     if (p.form === 'blood') {
       pxBar(24 + sl, 82, 300, 14, p.rage / p.rageMax, '#ff3a5a');
       drawText(`暴走 ${p.rage.toFixed(1)} 秒`, 24 + sl + 312, 98, 24, '#ff8a9a');
@@ -1960,12 +2213,12 @@ const roomScene = {
     } else drawSouls(24 + sl, 82, p);
     if (!tc) drawSkillBar(24, 118);
     // 触屏时右上角是返回/设置键，波次挪到顶部中间
-    if (tc) drawText(`第 ${R.wave} 波　击杀 ${R.kills}`, VW / 2, 40, 24, '#c8bcd8', 'center');
-    else drawText(`第 ${R.wave} 波　击杀 ${R.kills}`, VW - 24, 40, 24, '#c8bcd8', 'right');
+    if (tc) drawText(`${waveLabel()}　击杀 ${R.kills}`, VW / 2, 40, 24, '#c8bcd8', 'center');
+    else drawText(`${waveLabel()}　击杀 ${R.kills}`, VW - 24, 40, 24, '#c8bcd8', 'right');
     const boss = R.en.find((e) => e.boss && e.st !== 'dead');
     if (boss) {
       pxBar(VW / 2 - 240, 62, 480, 14, boss.hp / boss.maxHp, boss.p2 ? '#ff3a4a' : '#c03040');
-      drawText(BOSS.name, VW / 2 - 256, 78, 24, '#ffb0b8', 'right');
+      drawText(BOSS.name + ({ brood: '·孽生', fury: '·狂化' }[boss.variant] || ''), VW / 2 - 256, 78, 24, '#ffb0b8', 'right');
       if (boss.st === 'recover') drawText('破绽', (boss.x - cx) * RB_S, (boss.y - 128 - cy) * RB_S, 36, '#ffd23a', 'center');
     }
     if (R.banner > 0) drawText('时空断裂', VW / 2, 140, 48, `rgba(160,225,255,${clamp(R.banner, 0, 1)})`, 'center');
@@ -1979,13 +2232,13 @@ const roomScene = {
       const l2 = p.form === 'blood'
         ? '暴走中（无敌）：J 刀气三连　空格 血影闪　U 碑雨　I 血爪乱舞　O 血狱　P 葬（提前收尾）'
         : 'J 普攻　U 送葬突刺　I 掷碑（再按瞬身，按住 W 斜上扔）　O 断空（断裂中为瞬狱）　P 血契';
-      drawText('A/D 移动　K 跳（按住跳高，空中二段跳，下+K 穿落）　空格 冲刺　空中下+J 下劈　Esc 返回', VW / 2, H - 44, 24, 'rgba(220,210,235,.75)', 'center');
+      drawText(R.cfg ? 'A/D 移动　K 跳（按住跳高，空中二段跳，下+K 穿落）　空格 冲刺　空中下+J 下劈' : 'A/D 移动　K 跳（按住跳高，空中二段跳，下+K 穿落）　空格 冲刺　空中下+J 下劈　Esc 返回', VW / 2, H - 44, 24, 'rgba(220,210,235,.75)', 'center');
       drawText(l2, VW / 2, H - 14, 24, 'rgba(220,210,235,.75)', 'center');
     }
     if (R.dead) {
       ctx.fillStyle = 'rgba(0,0,0,.55)'; ctx.fillRect(0, 0, VW, H);
       drawText('倒下了', VW / 2, H / 2 - 20, 48, '#ff8a8a', 'center');
-      drawText(tc ? '轻点屏幕重来' : '按 R 重来', VW / 2, H / 2 + 30, 24, '#f0e6f6', 'center');
+      drawText(R.cfg ? '试炼失败' : tc ? '轻点屏幕重来' : '按 R 重来', VW / 2, H / 2 + 30, 24, '#f0e6f6', 'center');
     }
   },
 };
@@ -2015,5 +2268,7 @@ function demoInput() {
 }
 
 window.roomScene = roomScene;
+roomScene.start = (cfg) => { pendingCfg = cfg; setScene(roomScene); };
+roomScene.debugWin = () => { if (!R.cfg) return; R.en.length = 0; R.wave = R.cfg.waves.length; R.endT = 5; };   // 调试：直接通关当前战斗
 if (params.get('dbg')) window.__R = R;   // dbg=1：调试/截图脚本直接摆局面
 })();

@@ -1,0 +1,57 @@
+"""把 sfx.play 接进 room.js / run.js / explore.js（只加调用，不改逻辑）。"""
+import io, sys, os, shutil
+ROOT = sys.argv[1]
+BAK = os.path.join(os.environ.get('TEMP', '.'), 'bak_sfx'); os.makedirs(BAK, exist_ok=True)
+class F:
+    def __init__(self, rel):
+        self.p = os.path.join(ROOT, rel); shutil.copy(self.p, os.path.join(BAK, os.path.basename(rel)))
+        self.s = io.open(self.p, encoding='utf-8').read()
+    def rep(self, a, b, n=1):
+        c = self.s.count(a); assert c == n, (self.p, c, a[:90]); self.s = self.s.replace(a, b)
+    def save(self): io.open(self.p, 'w', encoding='utf-8', newline='').write(self.s)
+
+r = F('js/room.js')
+r.rep("const mv = (k, d = 0)", "const snd = (n, o) => { if (window.sfx) sfx.play(n, o); };\nconst mv = (k, d = 0)")
+r.rep("  const h = HITBOX[kind], box = faceBox(p, h), red = kind[0] === 't';\n",
+      "  const h = HITBOX[kind], box = faceBox(p, h), red = kind[0] === 't';\n  snd(red ? 'rageSwing' : kind === 'c2' ? 'atk3' : kind === 'c0' || kind === 'air' ? 'atk1' : 'atk2');\n")
+r.rep("  e.hp -= dmg; e.flash = 0.12;\n", "  e.hp -= dmg; e.flash = 0.12;\n  if (e.hp > 0) snd(o.crit ? 'hitCrit' : 'hit'); else if (!e.boss) snd('kill');\n")
+r.rep("setSt(p, 'dash'); p.vx = p.face * DASH_V;", "snd('dash'); setSt(p, 'dash'); p.vx = p.face * DASH_V;")
+r.rep("setSt(p, 'rdash'); p.hitSet = new Set();", "snd('dash', { rate: 1.3 }); setSt(p, 'rdash'); p.hitSet = new Set();")
+r.rep("  gainSoul(1);\n  if (p.st === 'thrust' && mv('thrustParry'))", "  gainSoul(1); snd('perfect');\n  if (p.st === 'thrust' && mv('thrustParry'))")
+r.rep("    say('三技联动　魂 +1', '#8fd8ff');", "    say('三技联动　魂 +1', '#8fd8ff'); snd('soul');")
+r.rep("    if (p.st !== 'storm') R.witch = Math.max(0, R.witch - dt);   // 瞬狱穿梭期间断裂时间暂停",
+      "    const w0 = R.witch;\n    if (p.st !== 'storm') R.witch = Math.max(0, R.witch - dt);   // 瞬狱穿梭期间断裂时间暂停\n    if (w0 > 0 && R.witch <= 0) snd('witchEnd');")
+r.rep("      setSt(p, 'thrust'); p.hitSet = new Set(); p.inv = 0.22; p.perfectUsed = false;", "      setSt(p, 'thrust'); snd('thrust'); p.hitSet = new Set(); p.inv = 0.22; p.perfectUsed = false;")
+r.rep("function throwBlade(p) {\n", "function throwBlade(p) {\n  snd('throw');\n")
+r.rep("function blink(p) {\n  const b = R.blade;\n", "function blink(p) {\n  const b = R.blade;\n  snd('blink');\n")
+r.rep("function doIai(p) {\n", "function doIai(p) {\n  snd('iai');\n")
+r.rep("    c.done = true;\n    const col = c.red ? 'blood' : 'soul';", "    c.done = true; snd('iaiCut');\n    const col = c.red ? 'blood' : 'soul';")
+r.rep("  p.storm = { list, i: 0, t: 0, red, cages: [], w0: R.witch };", "  p.storm = { list, i: 0, t: 0, red, cages: [], w0: R.witch };\n  snd('storm', red ? { rate: 0.8 } : undefined);")
+r.rep("      R.cutin = { t: 0 };\n      say('葬碑·血契', '#ff6a6a');", "      R.cutin = { t: 0 };\n      snd('transform');\n      say('葬碑·血契', '#ff6a6a');")
+r.rep("    d.done = true;\n    vfx('grave_break'", "    d.done = true; snd('rain');\n    vfx('grave_break'")
+r.rep("function doFinisher(p) {\n", "function doFinisher(p) {\n  snd('finisher');\n")
+r.rep("  p.hp = Math.max(0, p.hp - dmg);\n  p.soul = Math.max(0, p.soul - 1);", "  p.hp = Math.max(0, p.hp - dmg); snd('hurt');\n  p.soul = Math.max(0, p.soul - 1);")
+r.rep("{ e.buzzed = true; buzz(20); }", "{ e.buzzed = true; buzz(20); snd('tell'); }")
+r.rep("if (e.t >= SKEL.windup) { e.st = 'lunge';", "if (e.t >= SKEL.windup) { snd('skelLunge'); e.st = 'lunge';")
+r.rep("if (e.t >= HOUND.windup) { e.st = 'leap';", "if (e.t >= HOUND.windup) { snd('houndLeap'); e.st = 'leap';")
+r.rep("R.fx.push({ k: 'shriek', x: e.x, y: e.y - 24, t: 0 }); }", "R.fx.push({ k: 'shriek', x: e.x, y: e.y - 24, t: 0 }); snd('ghostShriek'); }")
+r.rep("function fireball(e, p) {\n", "function fireball(e, p) {\n  snd('fireball');\n")
+r.rep("    b.refl = true; b.t = 0; b.vx = p.face * WIZ.reflectV; b.vy = 0;\n", "    b.refl = true; b.t = 0; b.vx = p.face * WIZ.reflectV; b.vy = 0; snd('reflect');\n")
+r.rep("        e.st = 'slam'; e.t = 0; e.hitPlayer = false; R.shake = Math.max(R.shake, 3);", "        e.st = 'slam'; e.t = 0; e.hitPlayer = false; R.shake = Math.max(R.shake, 3); snd('bossLand', { gain: 0.55, rate: 1.25 });")
+r.rep("  say(`${BOSS.name}　降临`, '#ff6a6a');", "  say(`${BOSS.name}　降临`, '#ff6a6a'); snd('bossRoar');")
+r.rep("e.p2 = true; e.sumT = 0; say(`${B.name}　狂怒`, '#ff6a6a'); R.shake = 4; }", "e.p2 = true; e.sumT = 0; say(`${B.name}　狂怒`, '#ff6a6a'); R.shake = 4; snd('bossRoar', { rate: 0.85 }); }")
+r.rep("function bossStart(e, st) { e.st = st;", "function bossStart(e, st) { if (st === 'charge') snd('bossCharge'); e.st = st;")
+r.rep("if (e.t >= wind) { e.sub = 1; e.t = 0; R.shake = Math.max(R.shake, 2); }", "if (e.t >= wind) { e.sub = 1; e.t = 0; R.shake = Math.max(R.shake, 2); snd('bossBreath'); }")
+r.rep("        R.shake = 6; R.stop = Math.max(R.stop, 0.05); buzz(60);", "        R.shake = 6; R.stop = Math.max(R.stop, 0.05); buzz(60); snd('bossLand');")
+r.rep("function bossDown(e) {\n", "function bossDown(e) {\n  snd('bossDown');\n")
+r.rep("  R.ended = true;\n  const cfg = R.cfg, p = R.p;", "  R.ended = true;\n  snd(win ? 'victory' : 'defeat');\n  const cfg = R.cfg, p = R.p;")
+r.save()
+
+u = F('js/run.js')
+u.rep("function chooseNode(n) {\n", "function chooseNode(n) {\n  if (window.sfx) sfx.play('ui');\n")
+u.rep("function grantBoon(id) {\n", "function grantBoon(id) {\n  if (window.sfx) sfx.play('pick');\n")
+u.save()
+e = F('js/explore.js')
+e.rep("    buy(i) {\n", "    buy(i) {\n      if (window.sfx) sfx.play('coin');\n")
+e.save()
+print('sfx wired')

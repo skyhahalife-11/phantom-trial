@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="zh-CN"><head><meta charset="utf-8"><title>音效试听与自检</title>
+<style>
+body{background:#14121c;color:#e6e0f0;font:14px/1.5 "Microsoft YaHei",sans-serif;margin:20px}
+button{background:#2a2540;color:#e6e0f0;border:1px solid #5a4e80;border-radius:4px;padding:6px 12px;margin:3px;cursor:pointer}
+button:hover{background:#3b3460}
+.combo button{border-color:#ffb347;color:#ffd9a0}
+table{border-collapse:collapse;margin-top:12px}td,th{border:1px solid #3a3450;padding:3px 10px;text-align:right}
+td:first-child,th:first-child{text-align:left}.ok{color:#7dff9a}.bad{color:#ff6a6a;font-weight:bold}
+</style></head><body>
+<h2>音效试听与自检</h2>
+<p>音量 <input id="vol" type="range" min="0" max="1" step="0.05" value="0.7"> <label><input id="mute" type="checkbox"> 静音</label></p>
+<div class="combo"><button id="c1">完美闪避连击</button><button id="c2">变身序列</button><button id="c3">Boss 登场</button></div>
+<div id="btns"></div>
+<h3>离线渲染自检</h3>
+<div id="sum">运行中…</div>
+<table id="tb"><tr><th>音效</th><th>时长 s</th><th>原始峰值</th><th>RMS</th><th>结果</th></tr></table>
+<script src="../js/sfx.js"></script>
+<script>
+const $ = (s) => document.querySelector(s);
+const seq = (list) => list.forEach(([ms, n, o]) => setTimeout(() => sfx.play(n, o), ms));
+sfx.names.forEach((n) => { const b = document.createElement('button'); b.textContent = n; b.onclick = () => { sfx.unlock(); sfx.play(n); }; $('#btns').appendChild(b); });
+$('#vol').value = sfx.volume(); $('#mute').checked = sfx.muted();
+$('#vol').oninput = (e) => sfx.setVolume(+e.target.value);
+$('#mute').onchange = (e) => sfx.setMuted(e.target.checked);
+$('#c1').onclick = () => { sfx.unlock(); seq([[0, 'tell'], [450, 'dash'], [470, 'perfect'], [520, 'soul'], [900, 'atk1'], [950, 'hit'], [1150, 'atk2'], [1200, 'hit'], [1400, 'thrust'], [1450, 'hitCrit'], [1500, 'kill'], [3000, 'witchEnd']]); };
+$('#c2').onclick = () => { sfx.unlock(); seq([[0, 'transform'], [1700, 'rageSwing'], [1900, 'rageSwing'], [2100, 'rageSwing'], [2500, 'rain'], [2600, 'rain'], [2700, 'rain'], [2750, 'rain'], [3200, 'storm'], [3300, 'iaiCut'], [3380, 'iaiCut'], [4200, 'finisher']]); };
+$('#c3').onclick = () => { sfx.unlock(); seq([[0, 'bossRoar'], [2000, 'bossCharge'], [2750, 'bossLand'], [3500, 'bossBreath'], [5000, 'bossDown']]); };
+
+(async () => {
+  const rows = []; let bad = 0;
+  for (const n of sfx.names) {
+    const { buf, dur } = await sfx.render(n);
+    const d = buf.getChannelData(0); let peak = 0, sq = 0, nan = false, lastIdx = 0;
+    for (let i = 0; i < d.length; i++) { const v = d[i]; if (v !== v) { nan = true; break; } const a = Math.abs(v); if (a > peak) peak = a; sq += v * v; if (a > 0.002) lastIdx = i; }
+    const len = lastIdx / buf.sampleRate, rms = Math.sqrt(sq / d.length);
+    const probs = [];
+    if (nan) probs.push('NaN');
+    if (peak > 1.0) probs.push('削波');
+    if (rms < 0.002 || peak < 0.05) probs.push('近乎静音');
+    if (len < 0.05 || len > 3) probs.push('时长异常');
+    if (probs.length) bad++;
+    rows.push({ n, len, peak, rms, probs });
+    const tr = document.createElement('tr');
+    tr.innerHTML = `<td>${n}</td><td>${len.toFixed(2)}</td><td>${peak.toFixed(2)}</td><td>${rms.toFixed(3)}</td><td class="${probs.length ? 'bad' : 'ok'}">${probs.length ? probs.join('/') : 'OK'}</td>`;
+    $('#tb').appendChild(tr);
+  }
+  $('#sum').textContent = bad ? `${bad} 项未通过` : `全部通过（${rows.length} 个音效）`;
+  window.__sfxResults = { done: true, bad, rows };
+})();
+</script></body></html>

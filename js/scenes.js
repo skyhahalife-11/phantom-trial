@@ -1,6 +1,6 @@
 'use strict';
 
-let selectedHero = 'knight';
+let selectedHero = 'wine';
 let paused = false;
 const botState = { runs: Number(params.get('runs')) || 1, left: 0, results: [] };
 const SKILL_KEYS = ['U', 'I', 'O', 'P'];
@@ -16,10 +16,11 @@ const titleScene = {
   draw() {
     drawBackdrop(0.62);
     drawText('幻之试炼', W / 2, 110, 48, '#ffe9b0', 'center');
-    drawText('地下城闯关肉鸽 · 阶段 1', W / 2, 150, 24, UI.c.mut, 'center');
-    const h = HEROES.knight;
+    drawText('地下城闯关肉鸽 · 大房间版', W / 2, 150, 24, UI.c.mut, 'center');
+    const h = HEROES.wine;
     pxPanel(W / 2 - 360, 190, 720, 340, { fill: 'rgba(14,14,22,.9)', edge: UI.c.accent });
-    drawSprite('v2/heroes/knight.png', W / 2 - 220, 500, 280, false);
+    const hi = img('hero2/hero_idle.png'), hm = (window.HERO2 || {}).idle;
+    if (hm && ready(hi)) { ctx.imageSmoothingEnabled = false; const sc = 7, f = Math.floor(this.t * 5) % hm.n; ctx.drawImage(hi, f * hm.fw, 0, hm.fw, hm.fh, W / 2 - 220 - hm.anchorX * sc, 500 - hm.fh * sc + 4 * sc, hm.fw * sc, hm.fh * sc); }
     drawText(h.name, W / 2 - 60, 240, 36, '#fff');
     wrapText(h.blurb, 380, 24).forEach((ln, i) => drawText(ln, W / 2 - 60, 282 + i * 30, 24, UI.c.mut, 'left', false));
     h.skills.forEach((s, i) => {
@@ -28,10 +29,9 @@ const titleScene = {
       drawIcon(s.glyph || 'sparkles', s.ult ? 3 : 0, x + 40, y + 40, 2, 32);
       drawText(SKILL_KEYS[i], x + 12, y + 24, 24, UI.c.accent);
     });
-    drawText(`生命 ${h.hp}　攻击 ${h.atk}`, W / 2 - 60, 516, 24, UI.c.mut, 'left', false);
     const b = pxButton(W / 2 - 160, 560, 320, 64, '开始试炼', { edge: UI.c.accent, color: UI.c.accent });
-    pxButton(W / 2 + 180, 560, 260, 64, 'N 大房间试玩（新）', { edge: '#a0e0ff', color: '#a0e0ff' });
-    drawText('A/D 移动　J 攻击　K 跳跃　空格 闪避　U I O 技能　P 奥义　Esc 暂停　F11 全屏', W / 2, H - 30, 24, UI.c.mut, 'center');
+    pxButton(W / 2 + 180, 560, 260, 64, 'N 自由试玩（无限波）', { edge: '#a0e0ff', color: '#a0e0ff' });
+    drawText('A/D 移动　J 攻击　K 跳跃　空格 闪避　U I O 技能　P 血契变身　F11 全屏', W / 2, H - 30, 24, UI.c.mut, 'center');
   },
 };
 

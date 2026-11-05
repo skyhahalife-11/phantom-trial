@@ -128,3 +128,90 @@ function pxButton(x, y, w, h, label, o = {}) {
   drawText(label, x + w / 2, y + h / 2 + 8, 24, o.disabled ? '#5a5f70' : hover ? UI.c.accent : (o.color || UI.c.txt), 'center');
   return { hover, click: hover && mouse.clicked };
 }
+
+/* ======== 流程界面公共视觉：月夜墓园背景、粒子、火花、金色数字 ======== */
+const nowS = () => performance.now() / 1000;
+const EMBERS = Array.from({ length: 38 }, (_, i) => ({ x: (i * 211.7) % 1280, v: 9 + (i % 6) * 4, p: (i * 67) % 760, s: i % 5 === 0 ? 4 : 2, c: i % 3 === 0 ? '255,214,90' : i % 3 === 1 ? '255,120,170' : '150,200,255', ph: i * 1.7 }));
+let VIGNETTE = null;
+function vignetteCanvas() {
+  if (VIGNETTE) return VIGNETTE;
+  VIGNETTE = document.createElement('canvas'); VIGNETTE.width = W; VIGNETTE.height = H;
+  const g = VIGNETTE.getContext('2d');
+  const r = g.createRadialGradient(W / 2, H * 0.46, H * 0.3, W / 2, H * 0.5, W * 0.72);
+  r.addColorStop(0, 'rgba(8,4,20,0)'); r.addColorStop(1, 'rgba(4,2,12,0.78)');
+  g.fillStyle = r; g.fillRect(0, 0, W, H);
+  const b = g.createLinearGradient(0, H * 0.7, 0, H);
+  b.addColorStop(0, 'rgba(4,2,12,0)'); b.addColorStop(1, 'rgba(4,2,12,0.6)');
+  g.fillStyle = b; g.fillRect(0, H * 0.7, W, H * 0.3);
+  return VIGNETTE;
+}
+function drawBackdrop(dim = 0.72) {
+  const t = nowS();
+  ctx.fillStyle = '#0b0618'; ctx.fillRect(0, 0, W, H);
+  const bg = img('gv/cemetery/background.png'), mt = img('gv/cemetery/mountains.png');
+  ctx.imageSmoothingEnabled = false;
+  if (ready(bg)) ctx.drawImage(bg, 0, -14, 1280, 747);
+  const mo = ctx.createRadialGradient(W / 2, 250, 20, W / 2, 250, 420);   // 粉红月光晕
+  mo.addColorStop(0, 'rgba(255,90,170,.32)'); mo.addColorStop(1, 'rgba(255,90,170,0)');
+  ctx.fillStyle = mo; ctx.fillRect(0, 0, W, H);
+  if (ready(mt)) { ctx.globalAlpha = 0.85; for (let i = -1; i < 3; i++) ctx.drawImage(mt, i * 480 - (t * 3) % 480, H - 400, 480, 447); ctx.globalAlpha = 1; }
+  ctx.fillStyle = `rgba(10,5,24,${Math.max(0.18, dim - 0.4)})`; ctx.fillRect(0, 0, W, H);
+  ctx.drawImage(vignetteCanvas(), 0, 0);
+  for (const e of EMBERS) {   // 缓慢上飘的魂火与灰烬
+    const y = H + 20 - ((t * e.v + e.p) % (H + 40)), x = e.x + Math.sin(t * 0.6 + e.ph) * 18;
+    ctx.fillStyle = `rgba(${e.c},${0.22 + 0.2 * Math.sin(t * 2 + e.ph)})`; ctx.fillRect(Math.round(x), Math.round(y), e.s, e.s);
+  }
+}
+const SPARKS = [];
+function sparkBurst(x, y, n, col = '255,214,90', speed = 420) {
+  const t = nowS();
+  for (let i = 0; i < n; i++) {
+    const a = Math.random() * Math.PI * 2, v = speed * (0.3 + Math.random() * 0.7);
+    SPARKS.push({ x, y, vx: Math.cos(a) * v, vy: Math.sin(a) * v - 80, t0: t, life: 0.5 + Math.random() * 0.5, col, s: Math.random() < 0.3 ? 6 : 4 });
+  }
+  while (SPARKS.length > 60) SPARKS.shift();
+}
+function drawSparks() {
+  const t = nowS();
+  for (let i = SPARKS.length - 1; i >= 0; i--) {
+    const s = SPARKS[i], a = t - s.t0;
+    if (a > s.life) { SPARKS.splice(i, 1); continue; }
+    ctx.fillStyle = `rgba(${s.col},${1 - a / s.life})`;
+    ctx.fillRect(Math.round(s.x + s.vx * a), Math.round(s.y + s.vy * a + 700 * a * a), s.s, s.s);
+  }
+}
+/* 说明文字：数字与百分比用金色高亮，逐行居中 */
+const HI_RE = /([+\-×]?\d+(?:\.\d+)?(?:%|\s?秒|\s?格|\s?层|\s?像素)?)/g;
+function richLine(str, cx, y, size, col, hi = '#FFD23A') {
+  const parts = str.split(HI_RE).filter((s) => s !== '');
+  let tot = 0; const ws = parts.map((p) => { const w = textW(p, size); tot += w; return w; });
+  let x = cx - tot / 2;
+  parts.forEach((p, i) => { drawText(p, x, y, size, /\d/.test(p) ? hi : col, 'left', false); x += ws[i]; });
+}
+/* 小标签：品质色底 + 深色字；返回宽度 */
+function tagChip(str, x, y, col, filled = true, h = 30) {
+  const w = textW(str, 24) + 16;
+  ctx.fillStyle = UI.c.ink; ctx.fillRect(x - 2, y - 2, w + 4, h + 4);
+  ctx.fillStyle = col; ctx.fillRect(x, y, w, h);
+  if (!filled) { ctx.fillStyle = '#150f22'; ctx.fillRect(x + 2, y + 2, w - 4, h - 4); }
+  drawText(str, x + 8, y + h - 6, 24, filled ? '#150f22' : col, 'left', false);
+  return w + 8;
+}
+/* 装饰分隔线：中间一个菱形 */
+function ornament(cx, y, half, col) {
+  ctx.fillStyle = col;
+  ctx.fillRect(cx - half, y, half - 14, 2); ctx.fillRect(cx + 14, y, half - 14, 2);
+  ctx.save(); ctx.translate(cx, y + 1); ctx.rotate(Math.PI / 4); ctx.fillRect(-5, -5, 10, 10); ctx.restore();
+  ctx.fillRect(cx - half - 6, y - 3, 6, 8); ctx.fillRect(cx + half, y - 3, 6, 8);
+}
+/* 统一按钮：primary 为金色强调 */
+function fancyBtn(x, y, w, h, label, primary) {
+  const hover = inRect(x, y, w, h), t = nowS();
+  const edge = primary ? (hover ? '#fff2b0' : '#FFB347') : hover ? '#c8c0e0' : '#4a4062';
+  ctx.save(); if (primary) { ctx.shadowColor = `rgba(255,179,71,${hover ? 0.8 : 0.4 + 0.15 * Math.sin(t * 3)})`; ctx.shadowBlur = 22; }
+  ctx.fillStyle = UI.c.ink; ctx.fillRect(x - 4, y - 4, w + 8, h + 8); ctx.restore();
+  ctx.fillStyle = edge; ctx.fillRect(x, y, w, h);
+  ctx.fillStyle = primary ? (hover ? '#4a3414' : '#2e2010') : hover ? '#2a2240' : '#1a1428'; ctx.fillRect(x + 4, y + 4, w - 8, h - 8);
+  ctx.fillStyle = 'rgba(255,255,255,.06)'; ctx.fillRect(x + 4, y + 4, w - 8, (h - 8) / 2);
+  drawText(label, x + w / 2, y + h / 2 + 8, 24, primary ? '#FFD98A' : '#d8d0ec', 'center');
+}

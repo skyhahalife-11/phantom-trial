@@ -48,26 +48,45 @@ function doorScene() {
       else if (pressed.has('Escape') || (mouse.clicked && inRect(W / 2 + 30, 590, 220, 64))) this.go(false);
     },
     draw() {
-      drawBackdrop(0.82);
-      const cx = W / 2, top = 120;
-      const k = clamp(this.t / 0.5, 0, 1);
-      const pulse = 0.5 + 0.5 * Math.sin(this.t * 3);
-      const g = ctx.createRadialGradient(cx, top + 170, 10, cx, top + 170, 320);
-      g.addColorStop(0, `rgba(255,210,58,${0.28 * k})`); g.addColorStop(1, 'rgba(0,0,0,0)');
-      ctx.fillStyle = g; ctx.fillRect(0, 0, W, H);
-      // 门洞：像素拱门
-      const dw = 190, dh = 290, dx = cx - dw / 2;
-      ctx.fillStyle = UI.c.ink; ctx.fillRect(dx - 20, top - 20, dw + 40, dh + 40);
-      ctx.fillStyle = '#5a4a30'; ctx.fillRect(dx - 12, top - 12, dw + 24, dh + 24);
-      ctx.fillStyle = '#0a0a12'; ctx.fillRect(dx, top, dw, dh);
-      ctx.fillStyle = `rgba(255,210,58,${0.18 + 0.16 * pulse})`; ctx.fillRect(dx + 12, top + 12, dw - 24, dh - 12);
-      drawIcon('closed-doors', 3, cx, top + dh / 2, 4, 48, 0.9);
-      drawText('探索门', cx, top + dh + 70, 48, UI.Q[3], 'center');
-      drawText('S 评分奖励：门后是一家商店，或一个神秘房间。', cx, top + dh + 112, 24, UI.c.txt, 'center', false);
-      drawText('不进入没有任何惩罚。', cx, top + dh + 144, 24, UI.c.mut, 'center', false);
-      if (this.t > 0.4) {
-        pxButton(cx - 250, 590, 220, 64, 'Enter 进入', { edge: UI.c.accent, color: UI.c.accent });
-        pxButton(cx + 30, 590, 220, 64, 'Esc 离开');
+      drawBackdrop(0.86);
+      const cx = W / 2, top = 100, t = this.t;
+      const k = clamp(t / 0.6, 0, 1), breathe = 0.5 + 0.5 * Math.sin(t * 2.2);
+      const dw = 210, dh = 310, dx = cx - dw / 2, gy = top + dh;
+      // 门缝透出的扇形光线
+      ctx.save(); ctx.globalCompositeOperation = 'lighter';
+      for (let i = -3; i <= 3; i++) {
+        const a = i * 0.16 + Math.sin(t * 0.7 + i) * 0.02, len = 360 + 40 * breathe;
+        const g = ctx.createLinearGradient(cx, top + dh * 0.55, cx + Math.sin(a) * len, top + dh * 0.55 - Math.cos(a) * len * 0.3 + 120);
+        g.addColorStop(0, `rgba(255,214,120,${0.28 * k})`); g.addColorStop(1, 'rgba(255,214,120,0)');
+        ctx.fillStyle = g; ctx.beginPath(); ctx.moveTo(cx - 6, top + dh * 0.55); ctx.lineTo(cx + 6, top + dh * 0.55);
+        ctx.lineTo(cx + 6 + Math.sin(a) * len + 40, gy + 80); ctx.lineTo(cx - 6 + Math.sin(a) * len - 40, gy + 80); ctx.closePath(); ctx.fill();
+      }
+      const halo = ctx.createRadialGradient(cx, top + dh / 2, 20, cx, top + dh / 2, 300);
+      halo.addColorStop(0, `rgba(255,190,80,${(0.28 + 0.14 * breathe) * k})`); halo.addColorStop(1, 'rgba(255,190,80,0)');
+      ctx.fillStyle = halo; ctx.fillRect(0, 0, W, H);
+      ctx.restore();
+      // 石质门框（拱顶）
+      ctx.fillStyle = UI.c.ink; ctx.fillRect(dx - 30, top - 30, dw + 60, dh + 38);
+      ctx.fillStyle = '#3c3050'; ctx.fillRect(dx - 22, top - 22, dw + 44, dh + 30);
+      ctx.fillStyle = '#2a2040'; for (let i = 0; i < 5; i++) ctx.fillRect(dx - 22, top - 22 + i * 64, dw + 44, 3);
+      ctx.fillStyle = '#0a0612'; ctx.fillRect(dx, top, dw, dh);
+      // 两扇门：随时间微微向两侧打开一条缝，缝里是光
+      const gap = 6 + 4 * breathe + 10 * k;
+      ctx.fillStyle = `rgba(255,226,150,${0.75 + 0.2 * breathe})`; ctx.fillRect(cx - gap / 2, top + 6, gap, dh - 6);
+      for (const s of [-1, 1]) {
+        const lx = s < 0 ? dx + 6 : cx + gap / 2, lw = dw / 2 - gap / 2 - 6;
+        ctx.fillStyle = '#4a3418'; ctx.fillRect(lx, top + 6, lw, dh - 6);
+        ctx.fillStyle = '#5e4422'; ctx.fillRect(lx + 4, top + 12, lw - 8, dh - 18);
+        ctx.fillStyle = '#3a2810'; for (let i = 1; i < 6; i++) ctx.fillRect(lx + 4, top + 12 + i * ((dh - 18) / 6), lw - 8, 3);
+        ctx.fillStyle = '#B8902A'; ctx.fillRect(s < 0 ? lx + lw - 14 : lx + 4, top + dh / 2 - 12, 10, 24);   // 门环
+      }
+      drawText('探索门', cx, gy + 70, 48, '#FFD98A', 'center');
+      ornament(cx, gy + 86, 120, '#B8902A');
+      drawText('S 评分奖励：门后是一家商店，或一个神秘房间。', cx, gy + 124, 24, UI.c.txt, 'center', false);
+      drawText('不进入没有任何惩罚。', cx, gy + 154, 24, UI.c.mut, 'center', false);
+      if (t > 0.4) {
+        fancyBtn(cx - 250, 590, 220, 64, 'Enter 进入', true);
+        fancyBtn(cx + 30, 590, 220, 64, 'Esc 离开', false);
       }
     },
   };
@@ -78,10 +97,17 @@ function noticeScene(title, sub, next) {
     enter() { this.t = 0; },
     update(dt) { this.t += dt; if (bot.on || (this.t > 0.5 && (input.hit('confirm') || mouse.clicked))) next(); },
     draw() {
-      drawBackdrop(0.82);
-      drawText(title, W / 2, 300, 36, '#fff', 'center');
-      drawText(sub, W / 2, 352, 24, UI.c.txt, 'center');
-      if (this.t > 0.5) drawText('Enter 继续', W / 2, 560, 24, UI.c.accent, 'center');
+      drawBackdrop(0.88);
+      const k = clamp(this.t / 0.3, 0, 1), ek = 1 - Math.pow(1 - k, 3);
+      ctx.save(); ctx.globalAlpha = ek; ctx.translate(0, (1 - ek) * 24);
+      const hw = 300 * ek;
+      ctx.fillStyle = 'rgba(14,8,28,.82)'; ctx.fillRect(W / 2 - 440, 250, 880, 150);
+      ctx.fillStyle = '#3a2a4a'; ctx.fillRect(W / 2 - 440, 250, 880, 2); ctx.fillRect(W / 2 - 440, 398, 880, 2);
+      drawText(title, W / 2, 306, 36, '#fff', 'center');
+      ornament(W / 2, 324, hw, '#8a5a9a');
+      drawText(sub, W / 2, 368, 24, UI.c.txt, 'center');
+      ctx.restore();
+      if (this.t > 0.5 && Math.floor(this.t * 2) % 2 === 0) drawText('Enter 继续', W / 2, 560, 24, UI.c.accent, 'center');
     },
   };
 }
@@ -124,6 +150,7 @@ function shopScene(next) {
       if (!it) return;
       if (run.coins < it.price) { this.say('试炼币不足', UI.c.danger); return; }
       run.coins -= it.price;
+      if (window.sfx) sfx.play('coin');
       this.bought++;
       if (bot.on) console.log(`[EXPLORE] buy ${it.kind} ${it.b ? it.b.id : ''} price=${it.price} coins=${run.coins}`);
       if (it.kind === 'boon') { grantBoon(it.b.id); this.say(`获得「${it.b.name}」`, UI.Q[it.b.q]); }
@@ -228,7 +255,8 @@ function shopScene(next) {
 }
 
 /* ---------------- 工具 ---------------- */
-const petSlots = () => (count('p_core') || count('pet_wolf') ? 1 : 0) + (count('pet_raven') ? 1 : 0) + (count('pet_stone') ? 1 : 0);
+const PETS_ON = false;   // 大房间里还没有宠物系统：商店不卖、神秘房间不出宠物之洞
+const petSlots = () => (PETS_ON ? (count('p_core') || count('pet_wolf') ? 1 : 0) + (count('pet_raven') ? 1 : 0) + (count('pet_stone') ? 1 : 0) : 9);
 
 /* 失去强化不能破坏其他已持有强化的前置 */
 function canRemove(id) {

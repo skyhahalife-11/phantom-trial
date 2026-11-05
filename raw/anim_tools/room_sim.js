@@ -28,7 +28,22 @@ vm.createContext(sandbox);
 const src = fs.readFileSync(process.env.ROOM_JS || path.join(ROOT, 'js/room.js'), 'utf8').replace('window.roomScene = roomScene;', 'window.roomScene = roomScene; window.__R = R; window.__ROOM = ROOM;');
 vm.runInContext(src, sandbox, { filename: 'room.js' });
 const scene = sandbox.window.roomScene;
-scene.enter();
+let runEnd = null, maxAlive = 0, idleFrames = 0, hpMin = 100;
+if (process.env.RUN) {   // 肉鸽模式：RUN=1 STAGE=0|1|2 [ELITE=1] [BOSSROOM=1] [BOONS=id,id] [HP=100]
+  const dctx = vm.createContext({ console, Math, window: {}, Object, Array, Set });
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/data.js'), 'utf8'), dctx);
+  vm.runInContext(fs.readFileSync(path.join(ROOT, 'js/boons.js'), 'utf8'), dctx);
+  vm.runInContext('globalThis.__bm = buildMods;', dctx);
+  const st = Number(process.env.STAGE || 0), rep = (t, c) => Array(c).fill(t), air = st ? 'ghost' : 'wiz';
+  let waves = [[...rep('skel', 3), 'hound', air], [...rep('skel', 2 + st), ...rep('hound', 2), 'brute', ...rep(air, 1 + (st > 0 ? 1 : 0)), ...(st > 1 ? ['brute'] : [])]];
+  if (process.env.ELITE) waves = [['*brute', ...rep('skel', 3), 'hound', 'wiz'], ['*wiz', ...rep('skel', 3 + st), ...rep('hound', 2), 'brute']];
+  if (process.env.BOSSROOM) waves = [['boss']];
+  const mul = [{ hp: 1, dmg: 0.9 }, { hp: 1.35, dmg: 1.15 }, { hp: 1.75, dmg: 1.4 }][st];
+  sandbox.setScene = (s) => { if (s.enter) s.enter(); };
+  scene.start({ waves, mods: dctx.__bm((process.env.BOONS || '').split(',').filter(Boolean)), hp: Number(process.env.HP || 100), maxHp: 100,
+    eMul: { hp: mul.hp * (process.env.ELITE ? 1.3 : 1), dmg: mul.dmg, spd: 1 }, bossMul: [1, 1.5, 2][st], boss: !!process.env.BOSSROOM,
+    trigger: process.env.BOSSROOM ? 0 : 2, onEnd: (win, r) => { runEnd = { win, hp: r.hp, t: 0 }; } });
+} else scene.enter();
 const R = sandbox.window.__R;
 const seen = new Set(), stats = { perfect: 0, hurt: 0, hits: 0 };
 let lastBanner = 0, lastHp = 100, kills = 0, dmg = 0, atkFrames = 0, near = 0;
@@ -51,7 +66,7 @@ for (let f = 0; f < 60 * SECS; f++) {
       if (st) { dx = st.x + st.w / 2 - p.x; dy = st.y - p.y; }
     }
     const danger = R.en.find((e) => e.st === 'windup' && e.t > 0.42 && Math.abs(e.x - p.x) < 100 && Math.abs(e.y - p.y) < 40);
-    if (danger && f % 2 === 0) sandbox.pulse.add('dodge');
+    if (danger && f % 2 === 0 && !process.env.NODODGE) sandbox.pulse.add('dodge');
     else if (Math.abs(dx) > 30) sandbox.virt[dx > 0 ? 'right' : 'left'] = true;
     if (dy < -40 && p.ground && f % 20 === 0) sandbox.pulse.add('jump');
     if (dy < -40 && !p.ground && p.vy < 0) sandbox.virt.jump = true;
@@ -82,6 +97,7 @@ for (let f = 0; f < 60 * SECS; f++) {
     }
   }
   scene.update(DT);
+  if (process.env.RUN) { const al = R.en.length + (R.pend ? R.pend.length : 0); maxAlive = Math.max(maxAlive, al); if (!al && !runEnd && R.wave > 0) idleFrames++; hpMin = Math.min(hpMin, R.p.hp); if (runEnd) { runEnd.t = f / 60; break; } }
   for (const e of R.en) { const h = hpPrev.get(e) ?? e.hp; if (e.hp < h) dmg += h - e.hp; hpPrev.set(e, e.hp); }
   if (p.st === 'atk') atkFrames++;
   if (f % 900 === 0) console.log(`t=${f/60}s hero(${p.x|0},${p.y|0}) ${p.st} ground=${p.ground} | target ${tgt ? `(${tgt.x|0},${tgt.y|0}) ${tgt.st}` : '-'} | enemies ${R.en.length}`);
@@ -99,6 +115,7 @@ for (let f = 0; f < 60 * SECS; f++) {
   if (p.hp < lastHp) stats.hurt++;
   lastHp = p.hp;
 }
+if (process.env.RUN) console.log('RUN', JSON.stringify(runEnd), 'maxAlive', maxAlive, 'idle(s, 清空后等待)', (idleFrames / 60).toFixed(1), 'minHp', hpMin);
 console.log('waves', R.wave, 'kills', R.kills, 'hp', R.p.hp, 'dead', R.dead);
 console.log('damage dealt', dmg, 'frames attacking', atkFrames, 'frames near target', near);
 console.log('perfect dodges', stats.perfect, 'times hurt', stats.hurt);

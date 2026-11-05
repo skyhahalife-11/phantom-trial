@@ -4,6 +4,16 @@ const ANIMS = window.ANIMS || {};
 const HERO_H = 236;
 
 const HEROES = {
+  wine: {
+    name: '酒红剑客', hp: 100, atk: 10, speed: 150, ranged: false, color: '#c8404a', reach: 60,
+    blurb: '完美闪避灌魂，魂满变身暴走：普攻刀气、碑雨、血爪、血狱，期间无敌',
+    skills: [
+      { id: 'w1', name: '送葬突刺', cd: 6, glyph: 'sprint', desc: '一口气穿过敌人，刻下墓志；对眩晕敌人必暴击，可触发完美闪避' },
+      { id: 'w2', name: '掷碑·瞬身', cd: 5, glyph: 'crescent-blade', desc: '掷出巨剑钉住敌人；再按一次瞬移到剑的位置并斩击' },
+      { id: 'w3', name: '断空', cd: 7, glyph: 'whirlwind', desc: '延迟爆出斩痕；时空断裂中变成瞬狱，穿梭全屏敌人' },
+      { id: 'w4', name: '葬碑·血契', cd: 0, glyph: 'daemon-skull', ult: true, desc: '魂满变身暴走：无敌，全场敌人半速，技能全屏化' },
+    ],
+  },
   knight: {
     name: '骑士', hp: 280, atk: 15, speed: 270, ranged: false, color: '#cfe3ff', reach: 150,
     basic: { mults: [1, 1.1, 1.8], dur: 0.46, launch: 950 }, blurb: '近战连招：普攻第三下挑飞，K 跳起空中追击；盾击震晕后接重斩处决',
@@ -45,7 +55,7 @@ const HEROES = {
     ],
   },
 };
-const HERO_KEYS = ['knight']; // 阶段 1 只做骑士，其余英雄暂缓（数据保留）
+const HERO_KEYS = ['wine']; // 阶段 1 只做骑士，其余英雄暂缓（数据保留）
 
 const COINS = { skeleton: 3, imp: 2, reaper: 5, dragon: 40 };
 
@@ -60,6 +70,7 @@ function emptyMods() {
 const ENEMIES = {
   skeleton: { name: '骷髅兵', img: 'sprites/monsters/mon_skeleton_2.png', h: 214, art: 'R', hp: 100, speed: 92, dmg: 14, ai: 'grunt', range: 120, windup: 0.6 },
   imp: { name: '小恶魔', img: 'sprites/monsters/mon_imp_3.png', h: 160, art: 'F', hp: 62, speed: 150, dmg: 11, ai: 'imp' },
+  tombfiend: { name: '墓渊魔', img: 'gv/enemies/boss-portrait.png', h: 144, art: 'L', hp: 1400, speed: 70, dmg: 18, ai: 'boss', boss: true },
   reaper: { name: '瘟疫收割者', img: 'sprites/monsters/mon_reaper_3.png', h: 226, art: 'F', hp: 120, speed: 80, dmg: 18, ai: 'caster' },
   skelcap: { name: '骷髅队长', img: 'sprites/monsters/mon_skeleton_3.png', h: 300, art: 'L', hp: 900, speed: 88, dmg: 20, ai: 'captain', boss: true },
   merchant: { name: '流浪商人', img: 'pets/merchant.png', h: 230, art: 'L', hp: 120, speed: 78, dmg: 20, ai: 'merchant' },

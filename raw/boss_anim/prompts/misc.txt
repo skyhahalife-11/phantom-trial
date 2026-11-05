@@ -1,0 +1,9 @@
+Pixel art sprite sheet for a 2D side-scrolling action game boss, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight. Use the creature in the reference image exactly: a hulking hooded demon in a ragged black-purple robe, two large dark-red bat wings with spiked tips, a glowing cyan horned skull for a face, and small orange skulls hanging from chains at its sides. It is big and heavy.
+
+Layout: a 4 columns x 3 rows grid of 12 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 12. Row 1 is a summoning spell, row 2 is exhausted/staggered and a hit reaction, row 3 is a death collapse.
+
+Row 1, summon: 1. Standing, wings half open. 2. Both arms raised, wings lifting. 3. Head thrown back to the sky, arms high, wings wide. 4. Slamming both fists down toward the ground, wings snapping forward.
+Row 2: 5. Staggered, kneeling on one knee, panting, wings drooping, head lowered. 6. Same kneeling pose, chest heaving, wings slightly lower. 7. Hit reaction: recoiling backward, head snapped back, wings flared. 8. Recovering from the hit, hunched.
+Row 3, death collapse: 9. Staggering, wings drooping, head tilted. 10. Falling to its knees, wings crumpling. 11. Collapsing forward onto the ground, wings splayed limply. 12. Lying motionless in a heap, wings flat, skull dim.
+
+Every frame: the SAME creature at the SAME scale in every cell, strict side view facing RIGHT (never face the camera, never turn away); within one row the feet/robe bottom sit on the same ground line unless the frame is airborne; whole body including both wings inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no fire, no flames, no slash effects, no motion trails, no dust, no background objects, no extra characters, no minions, no text.
