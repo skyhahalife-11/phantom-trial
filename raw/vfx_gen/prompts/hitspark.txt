@@ -1,0 +1,12 @@
+Pixel art VFX sprite sheet for a 2D side-scrolling action game, gorgeous and punchy like anime fighting game hit effects. A HEAVY SWORD HIT IMPACT: a white-hot four-point star flash at the center with long sharp crimson rays, a crimson shock ring, and blood-red droplets and sparks spraying outward to the right, in wine red, crimson and scarlet with white-hot cores.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure BLACK (#000000) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 8 of ONE fast animation:
+1. Small blinding white star flash.
+2. Star explodes large with long crimson rays.
+3. Biggest: star rays at full length, shock ring appears, droplets burst out.
+4. Rays shrinking, ring expanding, droplets flying.
+5. Ring thin and wide, sparks scattering.
+6. Fading sparks and droplets.
+7. Few dim sparks.
+8. Last tiny embers.
+The impact center is at the center of every cell; everything fully inside the cell. Crisp pixel art with hard-edged pixels, limited palette, glowing look from bright pixel cores, no anti-aliasing blur, no character, no background, no text.

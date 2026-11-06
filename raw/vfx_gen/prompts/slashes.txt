@@ -1,0 +1,8 @@
+Pixel art VFX sprite sheet for a 2D side-scrolling action game, gorgeous and flashy like high-end anime fighting game sword slash effects. Four different GREATSWORD SLASH ARCS, each a thick crescent of light with a sharp tapered tip and tail: wine red and crimson outer body, hot scarlet middle, a thin white-hot leading edge, a few crimson spark pixels flying off the edge.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure BLACK (#000000) background, no grid lines, no text, no numbers. Each COLUMN is one slash type, top row = the slash at full brightness right after the swing, bottom row = the same slash a moment later, thinner, dimmer and breaking into sparks.
+Column 1: a DIAGONAL CLEAVE arc, from upper left curving down to lower right, like a big backslash-shaped crescent.
+Column 2: a wide FLAT HORIZONTAL SWEEP arc, a very wide shallow crescent from left to right, much wider than tall.
+Column 3: a RISING UPPERCUT arc, from lower left curving up to upper right, a tall crescent.
+Column 4: a VERTICAL OVERHEAD SMASH arc, a tall crescent from top curving down to the bottom right, ending in a burst at the bottom.
+Each slash is centered in its cell and fully inside the cell with margin. Crisp pixel art with hard-edged pixels, limited palette, glowing look from bright pixel cores, no anti-aliasing blur, no character, no sword, no background, no text.

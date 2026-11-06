@@ -1,0 +1,17 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like the most fluid, stylish 2D action game sprites (agile, elegant, fast). Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line. He fights like a nimble, graceful ASSASSIN doing a sword dance: light on the balls of his feet, always in motion, hopping, sliding and pivoting, with a slim elegant silhouette. The motion flows continuously: the end of one pose is the start of the next, and the sword travels in smooth circles around his body, sometimes held in one hand. Hair and coat tails flow with the movement. NOT stiff, NOT heavy, NOT wide planted horse stances, NOT chopping wood.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Leave wide empty green space between the figures so that no two figures or swords touch. Read left to right, top to bottom as frames 1 to 8. Frames 1-4 are attack 1, frames 5-8 are attack 2 of a flowing sword-dance combo.
+
+Attack 1, SKIPPING RISING FLICK:
+1. Light skip forward: on the toes of the front foot, rear leg lifted, sword held low behind in one hand.
+2. Smear: the sword flicks up diagonally from low-behind to high-front in one hand, body lifting onto the toes.
+3. Extension: on one toe, body stretched long and elegant, sword arm extended high forward, the other arm out for balance.
+4. Flow: the sword continues over his head and starts circling behind his back, feet already turning for the spin.
+
+Attack 2, ONE-FOOT PIROUETTE SWEEP:
+5. Pirouette start: spinning on the ball of one foot, back to the viewer, the sword trailing behind at waist height.
+6. Smear: front view, mid-spin on one toe, the sword sweeping horizontally around him as a curved smear, coat tails flared out in a circle.
+7. Finish of the spin: side view facing right, one leg extended back, the sword reaching far forward at waist height in one hand.
+8. Light settle: a small bouncy step, sword drawn back low beside the hip, ready to move on.
+
+Every frame: the SAME character, side view facing RIGHT (he may turn his back or face the viewer briefly while spinning); identical character scale in every cell; whole body and whole sword inside its own cell with margin, never crossing into another cell. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing. Smear frames may stretch the blade into a curved smear of steel, but NO glowing slash effects, no motion trails, no afterimages, no dust, no background objects, no extra characters, no text.

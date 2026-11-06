@@ -1,0 +1,12 @@
+Pixel art VFX sprite sheet for a 2D side-scrolling action game, gorgeous and flashy like high-end anime fighting game effects, seen from the side. A HEAVY GREATSWORD GROUND IMPACT in wine red and crimson: the moment a sword slams into the ground. Elements: a blinding white-and-scarlet impact flash at the ground point, a crimson shockwave ring flattened along the ground spreading left and right, a tall erupting pillar of blood-red energy and jagged crimson crescent splashes bursting upward, dark grey gravestone rock shards and crimson sparks flying out, then everything breaking into glowing embers that fade.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure BLACK (#000000) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 8 of ONE animation:
+1. Small intense white-hot flash point on the ground line.
+2. Flash explodes, first crimson shockwave starts spreading along the ground.
+3. Energy pillar and crescent splashes erupt upward, shockwave wider, rock shards launched.
+4. Peak: biggest and brightest, tall crimson pillar, wide ground shockwave, shards and sparks everywhere.
+5. Pillar starts breaking apart into crimson flames, shockwave reaching the cell edges.
+6. Dissipating flames and embers, shards falling.
+7. Faint embers and small red sparks.
+8. Last few dim embers almost gone.
+The impact point is at the bottom center of every cell on the same ground line; the effect spreads up and sideways, always fully inside the cell. Crisp pixel art with hard-edged pixels, limited palette, glowing look achieved with bright pixel cores, no anti-aliasing blur, no character, no sword, no background scenery, no text.

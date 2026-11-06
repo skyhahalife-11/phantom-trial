@@ -1,0 +1,14 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: dynamic, exaggerated, full of weight and momentum. Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 8. All eight frames are ONE continuous skill: a leaping SPINNING DIVE. The swordsman jumps, then dives diagonally down toward an enemy on the right at a 45 degree angle while spinning like a spinning top around his own body axis, the greatsword held out at arm's length so it sweeps a wide circle around him, then lands with a heavy downward slash.
+
+1. Crouch: knees deeply bent, sword gripped low at the hip, about to leap.
+2. Leap: body rising, legs tucked, sword raised overhead, facing right.
+3. Spin 1/4: in the air, the whole body tilted 45 degrees forward and down toward the lower right, strict side view facing right, sword swung out wide to the right at arm's length.
+4. Spin 2/4: same 45 degree forward-down tilt, body turned to face the viewer (front view), sword swinging across in front of the body, blade foreshortened.
+5. Spin 3/4: same 45 degree tilt, body turned to side view facing LEFT (back of the coat flaring), sword swung out wide to the left at arm's length.
+6. Spin 4/4: same 45 degree tilt, back to the viewer, sword swinging behind, coat tails flaring out in a circle from the spin.
+7. Landing slam: feet hitting the ground, facing right, body low, greatsword driven straight down into the ground in front.
+8. Recovery: rising from the crouch, sword pulled back to guard, facing right.
+
+In frames 3 to 6 the character is the same size, the same 45 degree tilt, and the coat tails and hair flare outward from the spin. Every frame: the SAME character; identical character scale in every cell; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing, no slash effects, no motion trails, no afterimages, no dust (effects are added in code), no background objects, no extra characters, no text.

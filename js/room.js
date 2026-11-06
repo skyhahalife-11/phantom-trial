@@ -46,6 +46,15 @@ const SK = {
   o: { delay: 0.3, dmg: 16, markDmg: 12, stun: 0.4, stormCuts: 3, stormDmg: 14, stormStep: 0.07, stormMax: 8 },
 };
 const SOUL_MAX = 5, SOUL_HIT = 0.125, LINK_T = 6;
+/* kit=b：刺客技能组（试验中）。I 葬轮：小跳后斜着往前下方旋转，沿途连砍，落地重砸；O 虚化：短位移穿身，
+   敌人出手瞬间虚化 = 完美虚化（时空断裂，O 立刻变瞬狱，用完或断裂结束后冷却 8 秒）；空格 替身：2 次，原地留墓碑、人往后跳，受击后马上用可挡回一半伤害 */
+const KIT_B = params.get('kit') === 'b';
+const KB = {
+  run: 175,
+  wheel: { rise: 0.2, riseVy: -480, riseVx: 120, vx: 460, vy: 150, fallAcc: 250, maxT: 0.6, tick: 0.08, dmg: 6, slam: 16, slamR: 64, stun: 0.6, cd: 4.5 },
+  phase: { t: 0.28, v: 380, inv: 0.32, cd: 3, perfCd: 8 },   // 普通虚化冷却短；完美虚化 → 可立刻瞬狱，之后冷却变长
+  sub: { n: 2, cd: 8, t: 0.3, vx: 240, vy: -260, inv: 0.45, refundT: 0.35, refund: 0.5 },
+};
 /* P 葬碑·血契 = 暴走：魂 ≥3 才能开，每格魂 2.5 秒。暴走中真正无敌、全场敌人半速、移动更快；
    普攻每刀甩出血色月牙刀气，闪避变成几乎无冷却的血影闪，四个技能都是全屏级；每击杀 +0.5 秒；时间到自动「葬」收尾 */
 const RAGE = { minSoul: 3, perSoul: 2.5, killAdd: 0.5, slow: 0.5, run: 1.25, wave: 20 };
@@ -59,6 +68,17 @@ const TSK = {
   stormDmg: 18,                                         // O 血狱（每道）
   finBase: 30, finCombo: 1.5,                           // P 葬：基础 + 每连击
 };
+
+/* kit=b 普攻四段：a 帧条、f0 起始帧；d 四拍时长（蓄 / 出 / 停 / 收）；伤害在第 hit 拍开头结算。
+   mv 位移：在 mt 秒内往前冲 dist 像素（前方有敌人就只贴到它身前）；sl 刀光（b_sl0~3），sx/sy 刀光位置，vf 刀光上下翻 */
+const KCOMBO = [
+  { a: 'b_c12', f0: 0, d: [0.08, 0.05, 0.11, 0.09], hit: 1, dist: 46, mt: 0.13, box: { x0: -2, x1: 60, y0: -64, y1: 0 }, dmg: 11, kb: 80, sl: 0, vf: true, sx: 26, sy: -30, stop: 0.05, shake: 2, snd: 'atk1' },
+  { a: 'b_c12', f0: 4, d: [0.06, 0.06, 0.1, 0.08], hit: 1, dist: 30, mt: 0.12, box: { x0: -40, x1: 64, y0: -50, y1: 0 }, dmg: 12, kb: 100, sl: 1, sx: 12, sy: -22, stop: 0.06, shake: 2, snd: 'atk2' },
+  { a: 'b_c34', f0: 0, d: [0.12, 0.05, 0.12, 0.07], hit: 1, dist: 80, mt: 0.15, box: { x0: -2, x1: 58, y0: -78, y1: 0 }, dmg: 13, kb: 30, launch: -320, sl: 2, sx: 20, sy: -36, stop: 0.07, shake: 3, snd: 'atk3' },
+  { a: 'b_c34', f0: 4, d: [0.1, 0.06, 0.16, 0.16], hit: 1, dist: 50, mt: 0.16, box: { x0: -14, x1: 70, y0: -70, y1: 6 }, dmg: 22, kb: 190, sl: 3, sx: 26, sy: -30, stop: 0.09, shake: 6, snd: 'atk3', fin: true },
+];
+const kcFrame = (s, t) => { let i = 0; while (i < 3 && t >= s.d[i]) { t -= s.d[i]; i++; } return i; };
+const kcAt = (s, k) => s.d.slice(0, k).reduce((a, b) => a + b, 0);
 
 const touchOn = () => !!(window.touchUI && touchUI.on);
 const assistOn = () => touchOn() && touchUI.opt.assist;
@@ -122,7 +142,7 @@ function rReset() {
   R.M = R.cfg ? R.cfg.mods : null; R.endT = 0; R.ended = false; R.godDone = false;
   if (R.cfg) { R.p.mx = R.cfg.maxHp; R.p.hp = R.cfg.hp; }
   Object.assign(R.p, { pdStacks: 0, pdT: 0, pdEye: 0, shield: 0, chainT: 0, dblT: 0, chainDmg: 0, chainCd: false, twoCritOn: false,
-    lastSk: '', lastSkT: -9, ultAfterT: 0, streak: 0, chargeT: -9, stunHits: 0 });
+    lastSk: '', lastSkT: -9, ultAfterT: 0, streak: 0, chargeT: -9, stunHits: 0, subN: KB.sub.n, subT: 0, hurtAt: -9, lastDmg: 0, phasePerf: false, wheelHit: null });
   R.en = []; R.fx = []; R.nums = []; R.cuts = []; R.blade = null; R.shots = []; R.drops = []; R.rain = null; R.rcombo = 0; R.shade = null; R.eshots = [];
   R.wave = params.get('boss') ? BOSS.wave - 1 : 0; R.kills = 0; R.waveT = 1.2;   // boss=1：调试用，开局直接打 Boss
   R.stop = 0; R.shake = 0; R.witch = Number(params.get('witch')) || 0; R.banner = 0;   // witch=秒：调试用，开局直接进时空断裂
@@ -161,7 +181,7 @@ function segDist(px, py, x0, y0, x1, y1) {
 // 这些状态里能放技能（含取消普攻后摇）
 const FREE = ['idle', 'run', 'jump', 'djump', 'fall', 'land', 'atk', 'runatk', 'airatk'];
 // 这些状态里普攻/跳跃不响应（按键留在预输入里，动作结束接上）
-const LOCK = ['hurt', 'dash', 'thrust', 'throw', 'blink', 'iai', 'storm', 'sheathe', 'transform',
+const LOCK = ['hurt', 'dash', 'thrust', 'throw', 'blink', 'iai', 'storm', 'sheathe', 'transform', 'wheel', 'phase', 'sub',
   'rdash', 'train', 'tmaul', 'tfinish', 'dead'];
 
 function setSt(p, st) { p.st = st; p.t = 0; p.hitDone = false; }
@@ -397,6 +417,10 @@ function playerUpdate(p, dt) {
   for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - dt * cr);
   p.chainT -= dt; p.scrollT -= dt; p.ultAfterT -= dt; p.pdEye -= dt; p.pdT -= dt;
   if (p.pdT <= 0) p.pdStacks = 0;
+  if (KIT_B) {   // 替身逐次回复；完美虚化后没用瞬狱，断裂结束也进长冷却
+    if (p.phasePerf && R.witch <= 0 && p.st !== 'storm') { p.phasePerf = false; p.cd.o = Math.max(p.cd.o, KB.phase.perfCd); }
+    if (p.subN < KB.sub.n && (p.subT -= dt) <= 0) { p.subN++; p.subT = KB.sub.cd; }
+  }
   if (p.dblT > 0) { p.dblT -= dt; if (p.dblT <= 0) setCd(p, 'u'); }
   if (p.st === 'dead') { p.vx *= 0.9; phys(p, dt); return; }
 
@@ -408,7 +432,11 @@ function playerUpdate(p, dt) {
 
   const busy = ['atk', 'airatk', 'runatk', 'land', 'plunge'].includes(p.st) || LOCK.includes(p.st);
   // 冲刺（带无敌，完美闪避在敌人攻击判定里结算）；暴走中变成血影闪
-  if (want(p, 'dodge') && p.dashCd <= 0 && !mv('noDodge')) {
+  if (KIT_B && !blood && want(p, 'dodge')) {
+    use(p, 'dodge');
+    if (p.subN > 0 && (FREE.includes(p.st) || p.st === 'hurt' || p.st === 'phase')) startSub(p, dir);
+    else if (p.subN <= 0) say('替身用完了', '#ff8a8a');
+  } else if (want(p, 'dodge') && p.dashCd <= 0 && !mv('noDodge')) {
     const dd = virt.dodgeDir || dir;   // 触屏滑动闪避带方向
     if (!blood && !['hurt', 'dash', 'thrust', 'blink', 'storm', 'transform'].includes(p.st) && (p.ground || p.airDash)) {
       use(p, 'dodge'); virt.dodgeDir = 0;
@@ -424,7 +452,7 @@ function playerUpdate(p, dt) {
     }
   }
   // 技能（扔剑的收招也能接技能，扔完马上瞬身过去最顺手）
-  if (FREE.includes(p.st) || p.st === 'throw' || (blood && p.st === 'rdash')) castSkills(p, dir, blood);
+  if (FREE.includes(p.st) || p.st === 'throw' || (blood && p.st === 'rdash') || (KIT_B && !blood && p.st === 'phase' && p.t > 0.1)) castSkills(p, dir, blood);
   // 跳跃 / 二段跳 / 穿落
   if (want(p, 'jump') && !LOCK.includes(p.st)) {
     if (p.ground && D && standingOnPlat(p)) { use(p, 'jump'); p.drop = 0.25; p.ground = false; p.coy = 0; p.vy = 40; setSt(p, 'fall'); }
@@ -439,6 +467,11 @@ function playerUpdate(p, dt) {
       if (p.st === 'atk') p.queued = true;
       else if (!busy) { autoFace(p, dir); startCombo(p, p.comboGap < 0.4 && p.combo >= 0 && p.combo < 2 ? p.combo + 1 : 0); }
       else done = false;
+    } else if (KIT_B && p.st === 'atk') {
+      p.queued = true;
+    } else if (KIT_B && p.ground && !busy) {
+      autoFace(p, dir);
+      startComboB(p, p.comboGap < 0.5 && p.combo >= 0 && p.combo < 3 ? p.combo + 1 : 0);
     } else if (!p.ground) {
       if (D && p.st !== 'plunge') { setSt(p, 'plunge'); p.vy = 420; p.vx *= 0.3; }
       else if (p.st !== 'plunge' && p.st !== 'airatk' && p.airCd <= 0) { autoFace(p, dir); setSt(p, 'airatk'); p.airCd = 0.12; }
@@ -461,6 +494,7 @@ function playerUpdate(p, dt) {
       if (p.t >= DASH_T) { p.vx = p.face * P_RUN * 0.6; p.dashEnd = 0; setSt(p, p.ground ? 'idle' : 'fall'); }
       break;
     case 'atk': {
+      if (KIT_B && !blood) { updateComboB(p, dt); break; }
       const s = blood ? TCOMBO[p.combo] : COMBO_STEP[p.combo], fps = blood ? T_FPS : 14, n = blood ? s.n : 4;
       p.vx *= Math.pow(0.002, dt);
       if (!p.hitDone && p.t >= s.hit / fps) { p.hitDone = true; doHit(p, (blood ? 'tc' : 'c') + p.combo); }
@@ -522,6 +556,18 @@ function playerUpdate(p, dt) {
     case 'storm':
       updateStorm(p, dt);
       break;
+    case 'wheel':
+      updateWheel(p, dt);
+      break;
+    case 'phase':
+      p.vy = 0;
+      if (p.t < 0.12) checkPerfect(p);   // 起手这一小段里攻击打来都算完美虚化
+      if (Math.floor(p.t / 0.04) !== Math.floor((p.t - dt) / 0.04)) afterImage(p);
+      if (p.t >= KB.phase.t) { p.vx = p.face * KB.run * 0.6; setSt(p, p.ground ? 'idle' : 'fall'); }
+      break;
+    case 'sub':
+      if (p.t >= KB.sub.t) setSt(p, p.ground ? 'idle' : 'fall');
+      break;
     case 'sheathe':
       p.vx = 0;
       if (p.t >= 0.35) setSt(p, p.ground ? 'idle' : 'fall');
@@ -553,7 +599,7 @@ function playerUpdate(p, dt) {
       break;
     default: {
       // 自由移动：idle / run / jump / djump / fall
-      const tv = dir * P_RUN * (blood ? RAGE.run : 1) * (1 + (R.M ? R.M.spd : 0));
+      const tv = dir * (KIT_B ? KB.run : P_RUN) * (blood ? RAGE.run : 1) * (1 + (R.M ? R.M.spd : 0));
       p.vx += clamp(tv - p.vx, -P_ACC * dt, P_ACC * dt);
       if (dir) p.face = dir;
       if (p.ground) setSt2(p, dir ? 'run' : 'idle');
@@ -578,7 +624,16 @@ function castSkills(p, dir, blood) {
       p.vx = p.face * SK.u.dist / SK.u.t; p.vy = 0;
       R.fx.push({ k: 'ghost', x: p.x, y: p.y, face: p.face, t: 0 });
       vfx('trail_soul', p.x + p.face * 26, p.y - 20, { rot: p.face > 0 ? Math.PI / 4 : -Math.PI / 4, flip: p.face < 0 });
-      checkPerfect(p);
+      if (!KIT_B) checkPerfect(p);
+    } else if (KIT_B && ready('s2', 'i')) {   // kit=b I 葬轮
+      use(p, 's2'); noteCast(p, 'i'); if (dir) p.face = dir;
+      p.cd.i = KB.wheel.cd; startWheel(p);
+    } else if (KIT_B && want(p, 's3') && R.witch > 0 && (p.phasePerf || p.cd.o <= 0)) {   // kit=b 完美虚化后 O = 瞬狱
+      use(p, 's3'); noteCast(p, 'o'); if (dir) p.face = dir;
+      if (startStorm(p)) { p.phasePerf = false; p.cd.o = KB.phase.perfCd; return; }
+    } else if (KIT_B && ready('s3', 'o')) {   // kit=b O 虚化
+      use(p, 's3'); noteCast(p, 'o'); if (dir) p.face = dir;
+      p.cd.o = KB.phase.cd; startPhase(p);
     } else if (want(p, 's2') && R.blade) {   // I 再按：瞬身到剑的位置
       use(p, 's2'); blink(p);
     } else if (ready('s2', 'i') && p.st !== 'throw') {   // I 掷碑：按住上斜着往上扔
@@ -612,7 +667,7 @@ function castSkills(p, dir, blood) {
 function phys(p, dt) {
   if (p.st === 'storm') return;   // 瞬狱中位置由穿梭本身决定
   const prevY = p.y;
-  if (!['dash', 'thrust', 'blink', 'rdash'].includes(p.st)) p.vy = Math.min(P_MAXFALL, p.vy + P_GRAV * dt);
+  if (!['dash', 'thrust', 'blink', 'rdash', 'phase'].includes(p.st) && !(p.st === 'wheel')) p.vy = Math.min(P_MAXFALL, p.vy + P_GRAV * dt);
   p.x = clamp(p.x + p.vx * dt, 10, ROOM.w - 10);
   p.y += p.vy * dt;
   const was = p.ground;
@@ -687,6 +742,111 @@ function thrustHits(p) {
     strike(e, SK.u.dmg, { critStun: true, mark: SK.u.mark, skill: 'u', kb: p.face * 40 });
     R.stop = Math.max(R.stop, 0.03); R.shake = Math.max(R.shake, 2);
   }
+}
+
+/* ---------- kit=b 普攻 ---------- */
+function startComboB(p, step) {
+  setSt(p, 'atk'); p.combo = step; p.queued = false;
+  const s = KCOMBO[step];
+  let dist = s.dist;   // 自动贴近：前方 150 像素内有敌人，只冲到它身前
+  for (const e of alive()) {
+    const dx = (e.x - p.x) * p.face;
+    if (dx > 0 && dx < 150 && Math.abs(e.y - p.y) < 50) dist = Math.min(dist, Math.max(6, dx - 26));
+  }
+  p.kcV = dist / s.mt;
+}
+function updateComboB(p, dt) {
+  const s = KCOMBO[p.combo];
+  p.vx = p.face * p.kcV * clamp(1 - (p.t - s.mt) / 0.05, 0, 1);   // 冲完 0.05 秒内刹住，不拖泥带水
+  if (p.t < s.mt && Math.floor(p.t / 0.03) !== Math.floor((p.t - dt) / 0.03)) { afterImage(p); Object.assign(R.fx[R.fx.length - 1], { red: true, soft: true, back: true }); }   // 淡酒红残影，画在主角身后
+  if (!p.hitDone && p.t >= kcAt(s, s.hit)) { p.hitDone = true; doHitB(p, s); }
+  const chainAt = kcAt(s, 3), end = kcAt(s, 4);   // 排队了就在「收」之前直接接下一段
+  if (p.queued && p.combo < 3 && p.t >= chainAt) { p.comboGap = 0; startComboB(p, p.combo + 1); return; }
+  if (p.t >= end) { p.comboGap = 0; setSt(p, 'idle'); if (p.combo === 3) p.combo = -1; }
+}
+function doHitB(p, s) {
+  snd(s.snd, s.fin ? { rate: 0.8 } : undefined);
+  vfx('b_sl' + s.sl, p.x + p.face * s.sx, p.y + s.sy, { flip: p.face < 0, vflip: s.vf });
+  const box = faceBox(p, s.box);
+  let n = 0;
+  for (const e of alive()) {
+    if (!overlap(box, eBox(e))) continue;
+    strike(e, s.dmg, { kb: p.face * s.kb, launch: s.launch, basic: true, third: !!s.fin });
+    n++;
+  }
+  reflectBalls(p, box);
+  if (!n) return;
+  R.stop = Math.max(R.stop, s.stop); R.shake = Math.max(R.shake, s.shake);
+  if (s.fin) { R.slowT = 0.2; R.flash = Math.max(R.flash, 0.08); burst(p.x + p.face * 30, p.y - 20, 12, { col: 'blood', v0: 80, v1: 260 }); }
+}
+
+/* ---------- kit=b 刺客技能 ---------- */
+function startWheel(p) {
+  setSt(p, 'wheel'); p.wheelHit = new Map(); p.wheel = { sub: p.ground ? 0 : 1, tick: 0, spin: 0 };
+  if (p.ground) { p.vy = KB.wheel.riseVy; p.vx = p.face * KB.wheel.riseVx; p.ground = false; }
+  else { p.vx = p.face * KB.wheel.vx; p.vy = KB.wheel.vy; }
+  snd('thrust', { rate: 0.8 });
+}
+function updateWheel(p, dt) {
+  const w = p.wheel, W2 = KB.wheel;
+  w.spin += dt * Math.PI * 2 / 0.2;
+  if (w.sub === 0) {   // 起跳
+    p.vy = W2.riseVy * (1 - p.t / W2.rise);
+    if (p.t >= W2.rise) { w.sub = 1; p.t = 0; snd('atk3'); }
+    return;
+  }
+  if (w.sub === 1) {   // 斜向旋转下落，沿途连砍
+    p.vx = p.face * W2.vx; p.vy = W2.vy + p.t * W2.fallAcc;
+    if (Math.floor(p.t / 0.05) !== Math.floor((p.t - dt) / 0.05)) burst(p.x - p.face * 6, p.y - 20, 4, { col: 'blood', v0: 60, v1: 180, up: 20, life: 0.45, g: 300 });
+    if (Math.floor(p.t / 0.03) !== Math.floor((p.t - dt) / 0.03)) R.fx.push({ k: 'wtrail', x: p.x + p.face * 4, y: p.y - 22, a: w.spin * 2, face: p.face, t: 0, life: 0.22 });
+    if ((w.tick -= dt) <= 0) {
+      w.tick = W2.tick;
+      const box = { x0: p.x - 30, x1: p.x + 30, y0: p.y - 44, y1: p.y + 8 };
+      let n = 0;
+      for (const e of alive()) {
+        if (!overlap(box, eBox(e)) || (p.wheelHit.get(e) || 0) >= 4) continue;
+        p.wheelHit.set(e, (p.wheelHit.get(e) || 0) + 1); n++;
+        strike(e, W2.dmg, { skill: 'i', kb: p.face * 70 });
+      }
+      if (n) { R.stop = Math.max(R.stop, 0.025); R.shake = Math.max(R.shake, 2); snd('atk2', { rate: 1.2 }); }
+    }
+    if (p.ground) { wheelSlam(p); return; }
+    if (p.t >= W2.maxT) { setSt(p, 'fall'); }
+    return;
+  }
+  // sub 2：落地收招
+  p.vx *= Math.pow(0.001, dt);
+  if (p.t >= 0.18) setSt(p, 'idle');
+}
+function wheelSlam(p) {
+  const W2 = KB.wheel;
+  p.wheel.sub = 2; p.t = 0; p.vy = 0;
+  R.shake = Math.max(R.shake, 5); R.stop = Math.max(R.stop, 0.06);
+  snd('atk3', { rate: 0.7 });
+  vfx('w_slam', p.x + p.face * 12, p.y + 1, { t: 1.5 / 16 });   // 跳过最小的起爆帧，砸下去当帧就炸开 R.flash = Math.max(R.flash, 0.08);
+  burst(p.x, p.y, 8, { col: 'stone', a0: Math.PI, a1: Math.PI * 2, v0: 80, v1: 220, up: 40 });
+  R.fx.push({ k: 'ring', x: p.x, y: p.y - 4, t: 0 });
+  for (const e of alive()) {
+    if (Math.abs(e.x - p.x) > W2.slamR || Math.abs(e.y - p.y) > 40) continue;
+    strike(e, W2.slam, { skill: 'i', mark: SK.u.mark, stun: W2.stun, launch: e.boss ? 0 : -150, kb: sign(e.x - p.x) * 60 });
+  }
+}
+function startPhase(p) {
+  setSt(p, 'phase'); p.perfectUsed = false; p.inv = KB.phase.inv;
+  p.vx = p.face * KB.phase.v; p.vy = 0;
+  snd('blink'); afterImage(p);
+  checkPerfect(p);
+}
+function startSub(p, dir) {
+  p.subN--; if (p.subN === KB.sub.n - 1) p.subT = KB.sub.cd;
+  const late = R.time - p.hurtAt <= KB.sub.refundT && p.lastDmg > 0;   // 刚挨打马上替身：墓碑挡回一半
+  if (late) { const back = Math.round(p.lastDmg * KB.sub.refund); p.hp = Math.min(p.mx, p.hp + back); p.lastDmg = 0; R.nums.push({ x: p.x, y: p.y - 52, v: '+' + back, c: '#8fffb0', t: 0 }); say('替身', '#c8bcd8'); }
+  R.fx.push({ k: 'tomb', x: p.x, y: p.y, t: 0, life: 1.1 });
+  burst(p.x, p.y - 16, 10, { col: 'stone', v0: 40, v1: 160 });
+  const away = dir ? -dir : -p.face;   // 往按的反方向跳；不按方向就往身后跳
+  p.face = -away;
+  p.vx = away * KB.sub.vx; p.vy = KB.sub.vy; p.ground = false; p.coy = 0; p.inv = KB.sub.inv; p.combo = -1;
+  setSt(p, 'sub'); snd('dash', { rate: 0.8 });
 }
 
 // I 掷碑：墓碑巨剑像回旋镖一样飞出、悬停、飞回；去程回程各打一次，打中的敌人被钉住（算眩晕）
@@ -972,9 +1132,10 @@ function hurtPlayer(p, dmg, fromX, src) {
     const skilling = ['thrust', 'throw', 'blink', 'iai', 'storm'].includes(p.st);
     dmg = Math.max(1, Math.round(dmg * (R.cfg ? R.cfg.eMul.dmg : 1) * (src && src.elite ? 1.3 : 1) * (1 - Math.min(0.5, mv('reduce'))) * (skilling ? 1 - mv('castReduce') : 1)));
   }
+  if (p.st === 'wheel') dmg = Math.max(1, Math.round(dmg * 0.5));
   if (p.shield > 0) { const a = Math.min(p.shield, dmg); p.shield -= a; dmg -= a; }
   p.pdStacks = 0; p.streak = 0;
-  p.hp = Math.max(0, p.hp - dmg); snd('hurt');
+  p.hp = Math.max(0, p.hp - dmg); snd('hurt'); p.hurtAt = R.time; p.lastDmg = dmg;
   p.soul = Math.max(0, p.soul - 1);   // 挨打掉 1 格魂
   const away = p.x < fromX ? -1 : 1;
   p.vx = away * 160; p.vy = -150; p.ground = false; p.coy = 0; p.inv = 0.9; p.combo = -1;
@@ -1024,6 +1185,7 @@ function triggerPerfect(p, e) {
   if (p.st === 'thrust' && mv('thrustParry')) { gainSoul(1); p.cd.u = 0; }
   if (mv('pdStack')) { p.pdStacks = Math.min(3, p.pdStacks + 1); p.pdT = 8; }
   if (mv('pdCrit')) p.pdEye = 3;
+  if (KIT_B && p.st === 'phase') { p.phasePerf = true; p.cd.o = 0; say('完美虚化　再按 O 瞬狱', '#8fd8ff'); }
   if (mv('pdShield') && !mv('noShield')) p.shield = Math.round(p.mx * mv('pdShield'));
   R.fx.push({ k: 'ring', x: p.x, y: p.y - 18, t: 0 });
   buzz(40);
@@ -1050,7 +1212,8 @@ function hurtEnemy(e, dmg, kb, launch, o = {}) {
   e.hp -= dmg; e.flash = 0.12;
   if (e.hp > 0) snd(o.crit ? 'hitCrit' : 'hit'); else if (!e.boss) snd('kill');
   R.nums.push({ x: e.x + rnd(-10, 10), y: e.y - 34 - rnd(0, 8), v: dmg, c: o.crit ? '#ffd23a' : '#fff2c0', big: o.crit, t: 0 });   // 抖开，挤在一起的敌人数字不糊成一团
-  vfx('hit_' + tint(), e.x + rnd(-4, 4), e.y - 14 + rnd(-4, 4), { rot: rnd(0, 6.28) });
+  if (KIT_B && R.p.form !== 'blood') vfx('b_hit', e.x + rnd(-4, 4), e.y - 18 + rnd(-4, 4), { flip: R.p.x > e.x });   // kit=b：十字爆点，血点往打的方向喷
+  else vfx('hit_' + tint(), e.x + rnd(-4, 4), e.y - 14 + rnd(-4, 4), { rot: rnd(0, 6.28) });
   if (o.crit) vfx('exp1_' + tint(), e.x, e.y - 16);
   if (e.hp <= 0 && e.boss) { bossDown(e); return; }
   if (e.hp <= 0) {
@@ -1413,7 +1576,7 @@ function updateFireballs(dt, p) {
       const e = alive().find((o) => overlap(box, eBox(o)));
       if (e) { strike(e, WIZ.reflectDmg, { kb: sign(b.vx) * 120 }); b.dead = true; }
     } else if (overlap(box, pBox(p))) {
-      if (['dash', 'thrust', 'blink'].includes(p.st) && p.inv > 0) { if (!b.dodged) { b.dodged = true; triggerPerfect(p, null); } }
+      if ((KIT_B ? ['phase', 'sub', 'thrust'] : ['dash', 'thrust', 'blink']).includes(p.st) && p.inv > 0) { if (!b.dodged) { b.dodged = true; triggerPerfect(p, null); } }
       else if (hurtPlayer(p, WIZ.dmg, b.x, null)) b.dead = true;
     }
     if (b.y >= ROOM.ground - 2 || b.x < 0 || b.x > ROOM.w || b.t > WIZ.ballLife) b.dead = true;
@@ -1506,6 +1669,7 @@ function heroFrame(p) {
     case 'land': return blood ? ['t_stomp', 3] : ['jump', 5];
     case 'dash': return f('dash', 20, false);
     case 'atk': {
+      if (KIT_B && !blood) { const s = KCOMBO[p.combo]; return [s.a, s.f0 + kcFrame(s, p.t)]; }
       if (!blood) return f('combo', 14, false, COMBO_STEP[p.combo].f0, 4);
       const s = TCOMBO[p.combo];
       return f(s.a, T_FPS, false, s.f0, s.n);
@@ -1520,6 +1684,14 @@ function heroFrame(p) {
     case 'blink': return f('blink', 28, false);
     case 'iai': return f('o_iai', 29, false);
     case 'storm': return blood ? ['t_sweep', 1 + (Math.floor(p.t * 20) % 2)] : ['blink', 0];
+    case 'wheel': {   // 葬轮：蹲→起跳 / 空中前倾绕身体转（右侧→正面→左侧→背面，循环）/ 落地砸→收招
+      const w = p.wheel; if (!w) return ['i_wheel', 2];
+      if (w.sub === 0) return ['i_wheel', p.t < 0.05 ? 0 : 1];
+      if (w.sub === 1) return ['i_wheel', 2 + (Math.floor(w.spin / (Math.PI / 2)) % 4)];
+      return ['i_wheel', p.t < 0.1 ? 6 : 7];
+    }
+    case 'phase': return f('dash', 20, false);
+    case 'sub': return ['jump', 3];
     case 'sheathe': return blood ? ['t_idle', 0] : ['o_iai', 11];
     case 'transform': return f('transform', 12, false);
     case 'rdash': return ['t_sweep', 0];
@@ -1538,7 +1710,22 @@ function drawHero(p, cx, cy) {
   rx.save();
   rx.translate(Math.round(p.x - cx), Math.round(p.y - cy) + 1);
   if (p.face < 0) rx.scale(-1, 1);
+  if (p.st === 'phase') { rx.globalAlpha = 0.4; rx.filter = 'sepia(1) hue-rotate(160deg) saturate(3) brightness(1.4)'; }
   rx.drawImage(im, i * m.fw, 0, m.fw, m.fh, -Math.round(m.anchorX), -m.fh, m.fw, m.fh);
+  rx.restore();
+  if (p.st === 'wheel' && p.wheel && p.wheel.sub === 1) drawWheelVortex(p, cx, cy);
+}
+/* 葬轮：绕身体的刀光漩涡，斜 45 度、压扁，发光叠加 */
+function drawWheelVortex(p, cx, cy) {
+  const m = VFX.w_spin, im = rImg('vfx/w_spin.png');
+  if (!m || !ready(im)) return;
+  const i = Math.floor(p.wheel.spin / (Math.PI / 4)) % m.n;
+  rx.save();
+  rx.translate(Math.round(p.x - cx + p.face * 2), Math.round(p.y - cy - 22));
+  rx.rotate(p.face > 0 ? -Math.PI / 4 : Math.PI / 4);
+  rx.scale(p.face > 0 ? 1 : -1, 0.62);
+  rx.globalCompositeOperation = 'lighter'; rx.globalAlpha = Math.min(1, 0.4 + p.t * 5);
+  rx.drawImage(im, i * m.fw, 0, m.fw, m.fh, -m.ax, -m.ay, m.fw, m.fh);
   rx.restore();
 }
 
@@ -1846,7 +2033,9 @@ function drawFx(cx, cy, back = false) {
       rx.translate(x, y);
       if (f.rot) rx.rotate(f.rot);
       if (f.flip) rx.scale(-1, 1);
+      if (f.vflip) rx.scale(1, -1);
       if (f.alpha) rx.globalAlpha = f.alpha;
+      if (m.add) rx.globalCompositeOperation = 'lighter';   // 生成的发光特效：叠加
       const ax = m.ax ?? Math.round(m.fw / 2), ay = m.ay ?? (f.ground ? m.fh : Math.round(m.fh / 2));   // ax/ay：召唤物素材自带锚点
       rx.drawImage(im, i * m.fw, 0, m.fw, m.fh, -ax, -ay, m.fw, m.fh);
       rx.restore();
@@ -1870,6 +2059,20 @@ function drawFx(cx, cy, back = false) {
         const a = i / f.n * Math.PI * 2 + f.x, d = 4 + 18 * k;
         rx.fillRect(Math.round(x + Math.cos(a) * d), Math.round(y + Math.sin(a) * d), 2, 2);
       }
+    } else if (f.k === 'wtrail') {   // 葬轮的酒红弧形拖尾
+      const k = f.t / f.life; if (k >= 1) continue;
+      rx.strokeStyle = `rgba(200,40,70,${0.85 * (1 - k)})`; rx.lineWidth = 4 - 2 * k;
+      const tilt = f.face > 0 ? -Math.PI / 4 : Math.PI / 4;   // 刀光圈和下扑方向垂直，斜 45 度
+      rx.beginPath(); rx.ellipse(x, y, 40, 14, tilt, f.a, f.a + 2.4); rx.stroke();
+      rx.strokeStyle = `rgba(255,190,200,${0.6 * (1 - k)})`; rx.lineWidth = 1;
+      rx.beginPath(); rx.ellipse(x, y, 34, 11, tilt, f.a + 0.3, f.a + 2.0); rx.stroke();
+    } else if (f.k === 'tomb') {   // 替身墓碑：立着挡刀，然后碎掉淡出
+      const k = f.t / f.life; if (k >= 1) continue;
+      rx.globalAlpha = k < 0.7 ? 1 : (1 - k) / 0.3;
+      rx.fillStyle = '#2a2430'; rx.fillRect(x - 11, y - 34, 22, 34); rx.fillRect(x - 7, y - 38, 14, 4);
+      rx.fillStyle = '#6a5e70'; rx.fillRect(x - 9, y - 32, 18, 30); rx.fillRect(x - 5, y - 36, 10, 4);
+      rx.fillStyle = '#c8203a'; rx.fillRect(x - 1, y - 28, 2, 12); rx.fillRect(x - 5, y - 24, 10, 2);
+      rx.globalAlpha = 1;
     } else if (f.k === 'ring') {
       const k = f.t / 0.5; if (k >= 1) continue;
       rx.strokeStyle = `rgba(150,220,255,${1 - k})`; rx.lineWidth = 2;
@@ -1879,10 +2082,10 @@ function drawFx(cx, cy, back = false) {
       rx.strokeStyle = `rgba(170,230,255,${0.9 * (1 - k)})`; rx.lineWidth = 3;
       rx.beginPath(); rx.arc(x, y, 12 + 360 * k * (2 - k), 0, Math.PI * 2); rx.stroke();
     } else if (f.k === 'after') {   // 主角残影（时空断裂中移动、瞬身、瞬狱）
-      const k = f.t / 0.3; if (k >= 1) continue;
+      const k = f.t / (f.soft ? 0.2 : 0.3); if (k >= 1) continue;
       const m = HERO_A[f.name], im = rImg(`hero2/hero_${f.name}.png`);
       if (!m || !ready(im)) continue;
-      rx.save(); rx.globalAlpha = 0.5 * (1 - k);
+      rx.save(); rx.globalAlpha = (f.soft ? 0.32 : 0.5) * (1 - k);
       rx.filter = f.red ? 'brightness(0.8) sepia(1) hue-rotate(-40deg) saturate(6)' : 'brightness(0.7) sepia(1) hue-rotate(150deg) saturate(4)';
       rx.translate(x, y + 1); if (f.face < 0) rx.scale(-1, 1);
       rx.drawImage(im, f.i * m.fw, 0, m.fw, m.fh, -Math.round(m.anchorX), -m.fh, m.fw, m.fh);
@@ -2072,12 +2275,14 @@ function btnState(id) {
     case 's1': return { label: b ? '雨' : '刺', cd: cdk('u') };
     case 's2':
       if (b) return { label: '乱', cd: cdk('i') };
+      if (KIT_B) return { label: '轮', cd: cdk('i') };
       return R.blade ? { label: '瞬', cd: 0 } : { label: '掷', cd: cdk('i') };
     case 's3':
       if (b) return { label: '狱', cd: cdk('o') };
+      if (KIT_B) return R.witch > 0 && (p.phasePerf || p.cd.o <= 0) ? { label: '狱', cd: 0 } : { label: '虚', cd: clamp(p.cd.o / (p.cd.o > KB.phase.cd ? KB.phase.perfCd : KB.phase.cd), 0, 1) };
       return R.witch > 0 ? { label: '狱', cd: cdk('o') } : { label: '断', cd: cdk('o') };
     case 's4': return b ? { label: '葬' } : { label: '契', off: p.soul < rageNeed() || mv('sealIdx', -1) === 3 };
-    case 'dodge': return { label: b ? '影' : '闪' };
+    case 'dodge': return KIT_B && !b ? { label: '替' + p.subN, off: p.subN <= 0, cd: p.subN < KB.sub.n ? clamp(p.subT / KB.sub.cd, 0, 1) : 0 } : { label: b ? '影' : '闪' };
   }
   return null;
 }
@@ -2095,7 +2300,7 @@ function drawSouls(x, y, p) {
 
 /* 电脑上的技能栏：四格，带冷却遮罩 */
 function drawSkillBar(x, y) {
-  const keys = [['s1', 'U'], ['s2', 'I'], ['s3', 'O'], ['s4', 'P']];
+  const keys = KIT_B ? [['s1', 'U'], ['s2', 'I'], ['s3', 'O'], ['s4', 'P'], ['dodge', '空格']] : [['s1', 'U'], ['s2', 'I'], ['s3', 'O'], ['s4', 'P']];
   keys.forEach(([id, key], i) => {
     const st = btnState(id), bx = x + i * 68;
     ctx.fillStyle = '#0d0a12'; ctx.fillRect(bx - 2, y - 2, 60, 60);
@@ -2129,6 +2334,7 @@ const roomScene = {
     if (R.msg && (R.msg.t -= dt) <= 0) R.msg = null;
     bufferInput(R.p, dt);
     if (R.stop > 0) { R.stop -= dt; return; }
+    if (R.slowT > 0) { R.slowT -= dt; dt *= 0.3; }   // 第 4 段收尾命中：短暂慢动作
     const p = R.p;
     const w0 = R.witch;
     if (p.st !== 'storm') R.witch = Math.max(0, R.witch - dt);   // 瞬狱穿梭期间断裂时间暂停
@@ -2231,8 +2437,10 @@ const roomScene = {
     if (!tc) {
       const l2 = p.form === 'blood'
         ? '暴走中（无敌）：J 刀气三连　空格 血影闪　U 碑雨　I 血爪乱舞　O 血狱　P 葬（提前收尾）'
+        : KIT_B ? 'J 普攻四连　U 送葬突刺　I 葬轮　O 虚化（闪准了再按 O 瞬狱）　P 血契'
         : 'J 普攻　U 送葬突刺　I 掷碑（再按瞬身，按住 W 斜上扔）　O 断空（断裂中为瞬狱）　P 血契';
-      drawText(R.cfg ? 'A/D 移动　K 跳（按住跳高，空中二段跳，下+K 穿落）　空格 冲刺　空中下+J 下劈' : 'A/D 移动　K 跳（按住跳高，空中二段跳，下+K 穿落）　空格 冲刺　空中下+J 下劈　Esc 返回', VW / 2, H - 44, 24, 'rgba(220,210,235,.75)', 'center');
+      const l1 = `A/D 移动　K 跳（按住跳高，空中二段跳，下+K 穿落）　${KIT_B ? '空格 替身' : '空格 冲刺'}　空中下+J 下劈`;
+      drawText(R.cfg ? l1 : l1 + '　Esc 返回', VW / 2, H - 44, 24, 'rgba(220,210,235,.75)', 'center');
       drawText(l2, VW / 2, H - 14, 24, 'rgba(220,210,235,.75)', 'center');
     }
     if (R.dead) {

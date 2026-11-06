@@ -1,0 +1,17 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: huge sweeping full-body motions with wide arcs, dynamic, exaggerated, full of weight and momentum, NOT small arm swings. Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 8. Frames 1-4 are attack 3, frames 5-8 are attack 4 (the finisher) of a greatsword combo.
+
+Attack 3, RISING UPPERCUT SLASH:
+1. Wind-up: very low crouch, sword held low behind, tip almost touching the ground behind him.
+2. Smear: exploding upward, the sword sweeping from low-behind to high-front in a huge rising arc, blade stretched into a smear, feet leaving the ground.
+3. Peak: airborne a little above the ground line, body stretched upward, sword pointing straight up above the head at the top of the arc.
+4. Transition: still airborne, both hands bringing the sword over and behind the head for a downward strike.
+
+Attack 4, LEAPING OVERHEAD SMASH (finisher):
+5. Airborne apex: higher in the air, body arched back like a bow, greatsword held with both hands far behind the head.
+6. Smear: falling forward, the sword crashing down from overhead to the ground in front, blade stretched into a vertical smear.
+7. Impact: landed in a very low wide stance, greatsword driven into the ground in front, body bent low over it, coat slamming down.
+8. Recovery: standing back up, sword lifted onto the right shoulder, confident pose facing right.
+
+Every frame: the SAME character, side view facing RIGHT (the body may twist and turn during the spin, but he ends facing right); identical character scale in every cell; feet on the same ground line in every cell unless the frame says airborne; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing. Smear frames may stretch the blade into a long curved smear of steel, but NO glowing slash effects, no motion trails, no afterimages, no dust (effects are added in code), no background objects, no extra characters, no text.

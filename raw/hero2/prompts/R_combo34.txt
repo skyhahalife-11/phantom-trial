@@ -1,0 +1,17 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like the most fluid, stylish 2D action game sprites (agile, elegant, fast). Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line. He fights like a nimble, graceful ASSASSIN doing a sword dance: light on the balls of his feet, always in motion, hopping, sliding and pivoting, with a slim elegant silhouette. The motion flows continuously: the end of one pose is the start of the next, and the sword travels in smooth circles around his body, sometimes held in one hand. Hair and coat tails flow with the movement. NOT stiff, NOT heavy, NOT wide planted horse stances, NOT chopping wood.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Leave wide empty green space between the figures so that no two figures or swords touch. Read left to right, top to bottom as frames 1 to 8. Frames 1-4 are attack 3, frames 5-8 are attack 4 (the finisher) of a flowing sword-dance combo.
+
+Attack 3, SLIDING UPWARD CUT:
+1. Slide: a fast low slide forward on one bent knee, the other leg extended in front, sword dragged low behind.
+2. Smear: springing up out of the slide, the sword sweeping from the ground upward in front of him as a curved smear.
+3. Rising: off the ground, body twisting upward, sword pointing up high above him in one hand.
+4. Tuck: in the air, knees tucked, sword pulled close beside the body, about to flip.
+
+Attack 4, AERIAL SOMERSAULT SLASH (finisher):
+5. Front flip, upside down in the air, the sword extended out as he rotates.
+6. Smear: completing the flip, the sword carving a big circle from overhead down in front of him as a curved smear.
+7. Landing: light landing on one knee, the sword swept low and far forward, coat settling.
+8. Elegant finish: rising to a poised stance, sword resting on the shoulder, facing right.
+
+Every frame: the SAME character, side view facing RIGHT (he may turn his back or face the viewer briefly while spinning); identical character scale in every cell; whole body and whole sword inside its own cell with margin, never crossing into another cell. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing. Smear frames may stretch the blade into a curved smear of steel, but NO glowing slash effects, no motion trails, no afterimages, no dust, no background objects, no extra characters, no text.

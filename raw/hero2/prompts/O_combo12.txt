@@ -1,0 +1,17 @@
+Pixel art sprite sheet for a 2D side-scrolling action game, animated like classic 2D arcade fighting game sprites: huge sweeping full-body motions with wide arcs, dynamic, exaggerated, full of weight and momentum, NOT small arm swings. Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Read left to right, top to bottom as frames 1 to 8. Frames 1-4 are attack 1, frames 5-8 are attack 2 of a greatsword combo.
+
+Attack 1, BIG DIAGONAL CLEAVE:
+1. Wind-up: big step forward with the left foot, body twisted back, greatsword raised high behind the right shoulder, blade pointing up and back.
+2. Smear: the sword whips down diagonally from top-right-back to bottom-front, the blade stretched into a long smear, body lunging forward.
+3. Impact pose: deep lunge, front knee bent, sword fully extended low in front pointing down-right, coat flaring forward.
+4. Follow-through: weight still forward, sword dragged low beside the front foot, body coiling for the next swing.
+
+Attack 2, FULL SPINNING SWEEP:
+5. Spin start: body turning away from the viewer (back to camera), sword carried horizontally behind at hip height.
+6. Spin middle: facing the viewer (front view), arms fully extended, the greatsword sweeping horizontally across the front at waist height, coat tails flying out in a circle.
+7. Spin end: back in side view facing right, sword fully extended horizontally to the right at waist height at the end of a huge flat sweep, body leaning into it.
+8. Recovery: sword pulled back to the hip, knees bent, ready for the next attack.
+
+Every frame: the SAME character, side view facing RIGHT (the body may twist and turn during the spin, but he ends facing right); identical character scale in every cell; feet on the same ground line in every cell unless the frame says airborne; whole body and whole sword inside the cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing. Smear frames may stretch the blade into a long curved smear of steel, but NO glowing slash effects, no motion trails, no afterimages, no dust (effects are added in code), no background objects, no extra characters, no text.
