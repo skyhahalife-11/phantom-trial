@@ -1,0 +1,17 @@
+Pixel art VFX sprite sheet for a 2D side-scrolling action game, gorgeous and flashy like high-end anime fighting game effects (Devil May Cry "Stinger" piercing thrust). Colors: wine red and crimson outer body, hot scarlet middle, a thin white-hot core, a few crimson spark pixels.
+
+Layout: a 4 columns x 2 rows grid of 8 equal cells on a solid pure BLACK (#000000) background, no grid lines, no text, no numbers. Everything points to the RIGHT. Each effect is centered in its cell and fully inside the cell with margin.
+
+TOP ROW, frames 1-4: THRUST SHOCKWAVE at the tip of a forward sword thrust, read left to right as an animation:
+1. A sharp pointed white-hot spearhead of light with a short cone of air behind it, the cone opening backward to the left.
+2. The spearhead stretches longer, a SPIRALING cone of crimson wind wraps around it, and a thin vertical oval SONIC-BOOM RING appears around the tip.
+3. Peak: a long tapered horizontal spear of light, a bright spiral cone of wind, two concentric vertical oval sonic-boom rings around the tip, crimson sparks streaming backward.
+4. Fading: the spear thins and breaks up, the rings widen and fade, scattered sparks.
+
+BOTTOM ROW, frames 5-8: PIERCE BURST, the blast that sprays out of an enemy's back when he is run through, read left to right:
+5. A small bright white star flash in the center with a thin horizontal line of light.
+6. A long sharp horizontal DIAMOND-shaped flash bursting to the right, white core and crimson edges, with a short burst of crimson streaks spraying rightward.
+7. Peak: the diamond flash at full size with a spray of crimson blood-like streaks and droplets fanning out to the right, a faint ring around the center.
+8. Fading: the flash collapses into a thin line, drifting crimson droplets and sparks.
+
+Crisp pixel art with hard-edged pixels, limited palette, glowing look from bright pixel cores, no anti-aliasing blur, no character, no sword, no background, no text.

@@ -1,0 +1,15 @@
+Pixel art KEY POSES for a 2D side-scrolling action game, in the style of the most fluid anime-style 2D action games (Dead Cells, Guilty Gear, Blazblue). Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line. He is a FAST, DEADLY ASSASSIN: every pose is EXTREME with a strong curved line of action through the whole body, like a freeze-frame from an anime fight. Weight is always committed. Coat tails and hair whip far behind him following the motion.
+
+Layout: 3 columns x 2 rows grid of 6 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Leave wide empty green space between figures so no two figures or swords touch. Each ROW is one attack; read left to right: WIND-UP, SMEAR, FOLLOW-THROUGH.
+
+Row 1, RISING LAUNCHER (uppercut slash):
+1. Wind-up: dropped extremely low, almost kneeling on the back knee, torso folded forward, the greatsword held low behind him with the tip touching the ground.
+2. Smear: springing upward off the front foot, body stretching up, the blade drawn as ONE tall curved steel smear crescent rising from the ground in front of him up to above his head.
+3. Follow-through: leaving the ground, the whole body stretched up in a long arc on the toes, sword raised high overhead pointing up and back, free arm reaching down.
+
+Row 2, AERIAL DIVING SMASH (finisher, starts from the end of row 1):
+4. Wind-up: in mid-air, back arched like a bow, knees tucked, the sword raised high behind his head with both hands, coat floating up.
+5. Smear: diving down and forward, the blade drawn as ONE huge vertical steel smear arc from above his head down to the ground in front of him, body folding over the swing.
+6. Follow-through: landed in a very low wide crouch, one knee near the ground, the sword slammed flat into the ground far in front with both hands, coat tails and hair still flying up.
+
+Every frame: the SAME character, side view facing RIGHT; identical character scale in every cell; whole body and whole sword inside its own cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing. The smear arc is part of the sprite (blurred steel), but NO glowing slash effects, no light trails, no afterimages, no dust, no background objects, no extra characters, no text. NOT standing upright, NOT stiff, NOT heavy wood-chopping.

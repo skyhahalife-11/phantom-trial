@@ -7,15 +7,20 @@
    整个文件包在闭包里：各脚本共用全局作用域，避免和 combat.js 的同名函数互相覆盖。 */
 (() => {
 
-const RB_H = 360, RB_S = H / RB_H;
+/* 画面先画在 RB_W × RB_H 的像素缓冲上，再整数倍放大铺满屏幕。手机上镜头拉近：缓冲高 240（放大 3 倍，角色看起来大 1.5 倍）；
+   zoom=倍数：调试用，电脑上预览手机镜头（建议 1 / 1.2 / 1.5） */
+let RB_H = 360, RB_S = H / RB_H;
 let RB_W = 640;   // 宽屏手机上随 VW 变宽，见 syncWidth
 const rbuf = document.createElement('canvas');
 rbuf.width = RB_W; rbuf.height = RB_H;
 const rx = rbuf.getContext('2d');
 rx.imageSmoothingEnabled = false;
+const camZoom = () => Number(params.get('zoom')) || (window.touchUI && touchUI.on ? 1.5 : 1);
 function syncWidth() {
+  const h = Math.round(360 / camZoom());
+  if (h !== RB_H) { RB_H = h; RB_S = H / RB_H; rbuf.height = h; rx.imageSmoothingEnabled = false; }
   const w = Math.round(VW / RB_S);
-  if (w !== RB_W) { RB_W = w; rbuf.width = w; rx.imageSmoothingEnabled = false; }
+  if (w !== RB_W || rbuf.height !== RB_H) { RB_W = w; rbuf.width = w; rx.imageSmoothingEnabled = false; }
 }
 
 const HERO_A = window.HERO2 || {};
@@ -46,13 +51,14 @@ const SK = {
   o: { delay: 0.3, dmg: 16, markDmg: 12, stun: 0.4, stormCuts: 3, stormDmg: 14, stormStep: 0.07, stormMax: 8 },
 };
 const SOUL_MAX = 5, SOUL_HIT = 0.125, LINK_T = 6;
-/* kit=b：刺客技能组（试验中）。I 葬轮：小跳后斜着往前下方旋转，沿途连砍，落地重砸；O 虚化：短位移穿身，
-   敌人出手瞬间虚化 = 完美虚化（时空断裂，O 立刻变瞬狱，用完或断裂结束后冷却 8 秒）；空格 替身：2 次，原地留墓碑、人往后跳，受击后马上用可挡回一半伤害 */
+/* kit=b：刺客技能组（试验中）。I 葬轮：小跳后斜着往前下方旋转，沿途连砍，落地重砸；O 招架：架刀 0.3 秒，
+   架刀时被打 = 招架成立（震刀、反击后自动瞬狱，冷却 8 秒；没被打冷却 3 秒，普攻中也能按）；空格 替身：2 次，原地留墓碑、人往后跳，受击后马上用可挡回一半伤害 */
 const KIT_B = params.get('kit') === 'b';
 const KB = {
   run: 175,
-  wheel: { rise: 0.2, riseVy: -480, riseVx: 120, vx: 460, vy: 150, fallAcc: 250, maxT: 0.6, tick: 0.08, dmg: 6, slam: 16, slamR: 64, stun: 0.6, cd: 4.5 },
-  phase: { t: 0.28, v: 380, inv: 0.32, cd: 3, perfCd: 8 },   // 普通虚化冷却短；完美虚化 → 可立刻瞬狱，之后冷却变长
+  wheel: { crouch: 0.06, upDmg: 8, rise: 0.2, riseVy: -480, riseVx: 120, vx: 460, vy: 150, fallAcc: 250, maxT: 0.6, tick: 0.08, dmg: 6, slam: 16, slamR: 64, stun: 0.6, cd: 4.5 },
+  phase: { t: 0.3, rec: 0.12, hold: 0.2, cut: 0.06, cd: 3, perfCd: 8 },   // O 招架：架刀 t 秒（无敌），期间被打 = 招架成立：震刀后滑 → 最后 cut 秒反击出刀 → 自动瞬狱；没被打收刀 rec 秒
+  dashCd: 0.4,   // 空格冲刺：只管赶路走位，没有无敌、不触发完美
   sub: { n: 2, cd: 8, t: 0.3, vx: 240, vy: -260, inv: 0.45, refundT: 0.35, refund: 0.5 },
 };
 /* P 葬碑·血契 = 暴走：魂 ≥3 才能开，每格魂 2.5 秒。暴走中真正无敌、全场敌人半速、移动更快；
@@ -69,16 +75,21 @@ const TSK = {
   finBase: 30, finCombo: 1.5,                           // P 葬：基础 + 每连击
 };
 
-/* kit=b 普攻四段：a 帧条、f0 起始帧；d 四拍时长（蓄 / 出 / 停 / 收）；伤害在第 hit 拍开头结算。
-   mv 位移：在 mt 秒内往前冲 dist 像素（前方有敌人就只贴到它身前）；sl 刀光（b_sl0~3），sx/sy 刀光位置，vf 刀光上下翻 */
+/* kit=b 普攻四段，每段三张关键帧：d 三拍 = 蓄力 / 拖影（出刀，同时往前冲 dist）/ 收势；拖影结束那一刻结算伤害。
+   arc 刀弧（以脚底为原点、朝右时的圆心偏移 dx/dy、半径 rx/ry、起止角 a0→a1）；sl 刀光（b_sl0~3），sx/sy 刀光位置，vf 刀光上下翻 */
 const KCOMBO = [
-  { a: 'b_c12', f0: 0, d: [0.08, 0.05, 0.11, 0.09], hit: 1, dist: 46, mt: 0.13, box: { x0: -2, x1: 60, y0: -64, y1: 0 }, dmg: 11, kb: 80, sl: 0, vf: true, sx: 26, sy: -30, stop: 0.05, shake: 2, snd: 'atk1' },
-  { a: 'b_c12', f0: 4, d: [0.06, 0.06, 0.1, 0.08], hit: 1, dist: 30, mt: 0.12, box: { x0: -40, x1: 64, y0: -50, y1: 0 }, dmg: 12, kb: 100, sl: 1, sx: 12, sy: -22, stop: 0.06, shake: 2, snd: 'atk2' },
-  { a: 'b_c34', f0: 0, d: [0.12, 0.05, 0.12, 0.07], hit: 1, dist: 80, mt: 0.15, box: { x0: -2, x1: 58, y0: -78, y1: 0 }, dmg: 13, kb: 30, launch: -320, sl: 2, sx: 20, sy: -36, stop: 0.07, shake: 3, snd: 'atk3' },
-  { a: 'b_c34', f0: 4, d: [0.1, 0.06, 0.16, 0.16], hit: 1, dist: 50, mt: 0.16, box: { x0: -14, x1: 70, y0: -70, y1: 6 }, dmg: 22, kb: 190, sl: 3, sx: 26, sy: -30, stop: 0.09, shake: 6, snd: 'atk3', fin: true },
+  { a: 'b_k12', f0: 0, d: [0.05, 0.035, 0.13], dist: 30, box: { x0: -2, x1: 60, y0: -64, y1: 0 }, dmg: 11, kb: 150, sl: 0, vf: true, sx: 26, sy: -30, stop: 0.05, shake: 2, snd: 'atk1',
+    arc: { dx: 12, dy: -22, rx: 30, ry: 26, a0: -2.4, a1: 0.8 } },
+  { a: 'b_k12', f0: 3, d: [0.04, 0.035, 0.12], dist: 22, box: { x0: -40, x1: 64, y0: -50, y1: 0 }, dmg: 12, kb: 150, sl: 1, sx: 12, sy: -22, stop: 0.05, shake: 2, snd: 'atk2',
+    arc: { dx: 10, dy: -15, rx: 36, ry: 10, a0: -2.9, a1: 0.4 } },
+  { a: 'b_k34', f0: 0, d: [0.06, 0.035, 0.13], dist: 20, box: { x0: -2, x1: 58, y0: -78, y1: 0 }, dmg: 13, kb: 30, launch: -320, sl: 2, sx: 20, sy: -36, stop: 0.06, shake: 3, snd: 'atk3', pillar: true,
+    arc: { dx: 8, dy: -24, rx: 30, ry: 32, a0: 1.9, a1: -1.4 } },
+  { a: 'b_k34', f0: 3, d: [0.07, 0.04, 0.34], dist: 34, box: { x0: -14, x1: 70, y0: -70, y1: 6 }, dmg: 22, kb: 190, sl: 3, sx: 26, sy: -30, stop: 0.1, shake: 6, snd: 'atk3', fin: true,
+    arc: { dx: 14, dy: -28, rx: 34, ry: 34, a0: -1.9, a1: 1.3, big: true } },
 ];
-const kcFrame = (s, t) => { let i = 0; while (i < 3 && t >= s.d[i]) { t -= s.d[i]; i++; } return i; };
-const kcAt = (s, k) => s.d.slice(0, k).reduce((a, b) => a + b, 0);
+const KREC = 0.08;   // 收招过渡帧（b_rec，每段一张）：收势之后没接下一刀才播
+const kcFrame = (s, t) => (t < s.d[0] ? 0 : t < s.d[0] + s.d[1] ? 1 : t < s.d[0] + s.d[1] + s.d[2] ? 2 : 3);
+const kcHit = (s) => s.d[0] + s.d[1];
 
 const touchOn = () => !!(window.touchUI && touchUI.on);
 const assistOn = () => touchOn() && touchUI.opt.assist;
@@ -146,7 +157,7 @@ function rReset() {
   R.en = []; R.fx = []; R.nums = []; R.cuts = []; R.blade = null; R.shots = []; R.drops = []; R.rain = null; R.rcombo = 0; R.shade = null; R.eshots = [];
   R.wave = params.get('boss') ? BOSS.wave - 1 : 0; R.kills = 0; R.waveT = 1.2;   // boss=1：调试用，开局直接打 Boss
   R.stop = 0; R.shake = 0; R.witch = Number(params.get('witch')) || 0; R.banner = 0;   // witch=秒：调试用，开局直接进时空断裂
-  R.msg = null; R.cutin = null; R.soulWarn = 0; R.flash = 0; R.afterT = 0;
+  R.msg = null; R.cutin = null; R.eye = null; R.soulWarn = 0; R.flash = 0; R.afterT = 0;
   R.time = 0; R.dead = false;
 }
 
@@ -332,7 +343,7 @@ function strike(e, dmg, o = {}) {
     if (o.skill && mv('ultCharge') && R.time - p.chargeT > 0.3) { p.chargeT = R.time; gainSoul(mv('ultCharge')); }
   }
   if (o.basic && e.mark > 0) gainSoul(SOUL_HIT);
-  if (o.mark) e.mark = o.mark + mv('markExtra');
+  if (o.mark && !KIT_B) e.mark = o.mark + mv('markExtra');   // kit=b 不用墓志
   if (o.skill) noteLink(o.skill);
   if (p.form === 'blood') R.rcombo++;
   hurtEnemy(e, Math.max(1, Math.round(dmg)), o.kb || 0, o.launch, { crit, stun: o.stun, breakArmor: brute && o.skill === 'u' ? 1.4 : 0 });
@@ -417,8 +428,7 @@ function playerUpdate(p, dt) {
   for (const k in p.cd) p.cd[k] = Math.max(0, p.cd[k] - dt * cr);
   p.chainT -= dt; p.scrollT -= dt; p.ultAfterT -= dt; p.pdEye -= dt; p.pdT -= dt;
   if (p.pdT <= 0) p.pdStacks = 0;
-  if (KIT_B) {   // 替身逐次回复；完美虚化后没用瞬狱，断裂结束也进长冷却
-    if (p.phasePerf && R.witch <= 0 && p.st !== 'storm') { p.phasePerf = false; p.cd.o = Math.max(p.cd.o, KB.phase.perfCd); }
+  if (KIT_B) {   // 替身逐次回复
     if (p.subN < KB.sub.n && (p.subT -= dt) <= 0) { p.subN++; p.subT = KB.sub.cd; }
   }
   if (p.dblT > 0) { p.dblT -= dt; if (p.dblT <= 0) setCd(p, 'u'); }
@@ -432,19 +442,18 @@ function playerUpdate(p, dt) {
 
   const busy = ['atk', 'airatk', 'runatk', 'land', 'plunge'].includes(p.st) || LOCK.includes(p.st);
   // 冲刺（带无敌，完美闪避在敌人攻击判定里结算）；暴走中变成血影闪
-  if (KIT_B && !blood && want(p, 'dodge')) {
+  if (KIT_B && !blood && want(p, 'dodge') && (p.st === 'hurt' || R.time - p.hurtAt <= KB.sub.refundT)) {   // 挨打后按空格 = 替身
     use(p, 'dodge');
-    if (p.subN > 0 && (FREE.includes(p.st) || p.st === 'hurt' || p.st === 'phase')) startSub(p, dir);
-    else if (p.subN <= 0) say('替身用完了', '#ff8a8a');
+    if (p.subN > 0) startSub(p, dir); else say('替身用完了', '#ff8a8a');
   } else if (want(p, 'dodge') && p.dashCd <= 0 && !mv('noDodge')) {
     const dd = virt.dodgeDir || dir;   // 触屏滑动闪避带方向
     if (!blood && !['hurt', 'dash', 'thrust', 'blink', 'storm', 'transform'].includes(p.st) && (p.ground || p.airDash)) {
       use(p, 'dodge'); virt.dodgeDir = 0;
       if (dd) p.face = dd;
       if (!p.ground) p.airDash = false;
-      snd('dash'); setSt(p, 'dash'); p.vx = p.face * DASH_V; p.vy = 0; p.inv = DASH_INV; p.dashCd = DASH_CD * (1 - Math.min(0.6, mv('dodgeCdr'))); p.perfectUsed = false;
+      snd('dash'); setSt(p, 'dash'); p.vx = p.face * DASH_V; p.vy = 0; p.inv = KIT_B ? 0 : DASH_INV; p.dashCd = (KIT_B ? KB.dashCd : DASH_CD) * (1 - Math.min(0.6, mv('dodgeCdr'))); p.perfectUsed = false;
       R.fx.push({ k: 'ghost', x: p.x, y: p.y, face: p.face, t: 0 });
-      checkPerfect(p);
+      if (!KIT_B) checkPerfect(p);   // kit=b：冲刺只管移动，躲招靠 O 招架
     } else if (blood && (FREE.includes(p.st) || p.st === 'rdash')) {
       use(p, 'dodge'); virt.dodgeDir = 0;
       if (dd) p.face = dd;
@@ -452,7 +461,10 @@ function playerUpdate(p, dt) {
     }
   }
   // 技能（扔剑的收招也能接技能，扔完马上瞬身过去最顺手）
-  if (FREE.includes(p.st) || p.st === 'throw' || (blood && p.st === 'rdash') || (KIT_B && !blood && p.st === 'phase' && p.t > 0.1)) castSkills(p, dir, blood);
+  if (KIT_B && !blood && p.st === 'atk' && p.cd.o <= 0 && want(p, 's3')) {   // 招架可以取消普攻，连招不断
+    use(p, 's3'); noteCast(p, 'o'); autoFace(p, dir); p.cd.o = KB.phase.cd; startPhase(p);
+  }
+  if (FREE.includes(p.st) || p.st === 'throw' || (blood && p.st === 'rdash')) castSkills(p, dir, blood);
   // 跳跃 / 二段跳 / 穿落
   if (want(p, 'jump') && !LOCK.includes(p.st)) {
     if (p.ground && D && standingOnPlat(p)) { use(p, 'jump'); p.drop = 0.25; p.ground = false; p.coy = 0; p.vy = 40; setSt(p, 'fall'); }
@@ -527,6 +539,11 @@ function playerUpdate(p, dt) {
     // ---- 常态技能 ----
     case 'thrust':
       p.vy = 0;
+      if (KIT_B && p.t < SK.u.t) {
+        if (p.uCone) { p.uCone.x = p.x + p.vx * dt + p.face * 26; p.uCone.y = p.y - 22; }   // 冲击波跟着剑尖走（算上这一帧的位移，不落后一帧）
+        if (Math.floor(p.t / 0.02) !== Math.floor((p.t - dt) / 0.02)) { afterImage(p); Object.assign(R.fx[R.fx.length - 1], { red: true, soft: true, back: true }); }
+        if (p.ground && Math.floor(p.t / 0.04) !== Math.floor((p.t - dt) / 0.04)) burst(p.x - p.face * 6, p.y, 3, { col: 'stone', a0: Math.PI, a1: Math.PI * 2, v0: 30, v1: 90, up: 20, life: 0.35 });   // 脚下卷起的土
+      }
       if (p.t < SK.u.t) thrustHits(p);
       else p.vx *= Math.pow(0.0005, dt);   // 冲完短暂滑行
       if (p.t >= SK.u.t + 0.06) {
@@ -559,12 +576,26 @@ function playerUpdate(p, dt) {
     case 'wheel':
       updateWheel(p, dt);
       break;
-    case 'phase':
-      p.vy = 0;
-      if (p.t < 0.12) checkPerfect(p);   // 起手这一小段里攻击打来都算完美虚化
-      if (Math.floor(p.t / 0.04) !== Math.floor((p.t - dt) / 0.04)) afterImage(p);
-      if (p.t >= KB.phase.t) { p.vx = p.face * KB.run * 0.6; setSt(p, p.ground ? 'idle' : 'fall'); }
+    case 'phase': {   // O 招架
+      const K = KB.phase;
+      p.vx = 0; p.vy = Math.min(p.vy, 60);
+      if (p.phasePerf) {   // 招架成立：被砸得往后滑一小步 → 反手一刀 → 自动瞬狱
+        const u = p.t - p.perfAt;
+        p.vx = -p.face * 140 * Math.max(0, 1 - u / 0.12);
+        if (u >= K.hold - K.cut && !p.parryCut) {
+          p.parryCut = true; p.vx = 0; snd('atk3', { rate: 1.3 });
+          R.fx.push({ k: 'karc', x: p.x, y: p.y, face: p.face, dx: 10, dy: -24, rx: 30, ry: 32, a0: 1.9, a1: -1.4, t: 0, life: 0.22 });   // 上撩反击的刀弧
+        }
+        if (u >= K.hold) {
+          p.phasePerf = false; p.cd.o = K.perfCd;
+          if (!startStorm(p)) { p.inv = 0.3; setSt(p, p.ground ? 'idle' : 'fall'); }   // 屏幕里没敌人（打火球触发）：收刀
+        }
+        break;
+      }
+      if (p.t < K.t) checkPerfect(p);   // 架势期间，有攻击打来 = 招架成立
+      else if (p.t >= K.t + K.rec) setSt(p, p.ground ? 'idle' : 'fall');
       break;
+    }
     case 'sub':
       if (p.t >= KB.sub.t) setSt(p, p.ground ? 'idle' : 'fall');
       break;
@@ -623,15 +654,15 @@ function castSkills(p, dir, blood) {
       setSt(p, 'thrust'); snd('thrust'); p.hitSet = new Set(); p.inv = 0.22; p.perfectUsed = false;
       p.vx = p.face * SK.u.dist / SK.u.t; p.vy = 0;
       R.fx.push({ k: 'ghost', x: p.x, y: p.y, face: p.face, t: 0 });
-      vfx('trail_soul', p.x + p.face * 26, p.y - 20, { rot: p.face > 0 ? Math.PI / 4 : -Math.PI / 4, flip: p.face < 0 });
+      if (KIT_B) {   // 剑尖冲击波（螺旋气浪 + 音爆环），冲刺中钉在剑尖上
+        p.uCone = vfx('u_cone', p.x + p.face * 26, p.y - 22, { flip: p.face < 0 });
+        for (let j = 0; j < 6; j++) R.fx.push({ k: 'kline', x: p.x - p.face * rnd(0, 30), y: p.y - rnd(6, 40), face: p.face, len: rnd(24, 60), t: 0, life: 0.18 });
+      } else vfx('trail_soul', p.x + p.face * 26, p.y - 20, { rot: p.face > 0 ? Math.PI / 4 : -Math.PI / 4, flip: p.face < 0 });
       if (!KIT_B) checkPerfect(p);
     } else if (KIT_B && ready('s2', 'i')) {   // kit=b I 葬轮
       use(p, 's2'); noteCast(p, 'i'); if (dir) p.face = dir;
       p.cd.i = KB.wheel.cd; startWheel(p);
-    } else if (KIT_B && want(p, 's3') && R.witch > 0 && (p.phasePerf || p.cd.o <= 0)) {   // kit=b 完美虚化后 O = 瞬狱
-      use(p, 's3'); noteCast(p, 'o'); if (dir) p.face = dir;
-      if (startStorm(p)) { p.phasePerf = false; p.cd.o = KB.phase.perfCd; return; }
-    } else if (KIT_B && ready('s3', 'o')) {   // kit=b O 虚化
+    } else if (KIT_B && ready('s3', 'o')) {   // kit=b O 招架
       use(p, 's3'); noteCast(p, 'o'); if (dir) p.face = dir;
       p.cd.o = KB.phase.cd; startPhase(p);
     } else if (want(p, 's2') && R.blade) {   // I 再按：瞬身到剑的位置
@@ -738,7 +769,10 @@ function thrustHits(p) {
     p.hitSet.add(e);
     if (e.st === 'stun') p.stunHits++;
     p.vx *= 0.75;   // 穿过一个敌人只略微减速，保留冲劲（不急停）
-    vfx('exp1_soul', e.x, e.y - 16);
+    if (KIT_B) {
+      vfx('u_pierce', e.x + p.face * 4, e.y - 20, { flip: p.face < 0 });   // 从敌人背后喷出的菱形贯穿闪光
+      R.fx.push({ k: 'kspark', x: e.x, y: e.y - 20, t: 0, life: 0.45, ps: sparkSet(p.face, 10, '#ffe0e6', 80, 260).concat(sparkSet(p.face, 6, '#ff2e55', 60, 200)) });
+    } else vfx('exp1_soul', e.x, e.y - 16);
     strike(e, SK.u.dmg, { critStun: true, mark: SK.u.mark, skill: 'u', kb: p.face * 40 });
     R.stop = Math.max(R.stop, 0.03); R.shake = Math.max(R.shake, 2);
   }
@@ -746,53 +780,100 @@ function thrustHits(p) {
 
 /* ---------- kit=b 普攻 ---------- */
 function startComboB(p, step) {
-  setSt(p, 'atk'); p.combo = step; p.queued = false;
+  setSt(p, 'atk'); p.combo = step; p.queued = false; p.kcFx = false; p.kcDone = false;
   const s = KCOMBO[step];
-  let dist = s.dist;   // 自动贴近：前方 150 像素内有敌人，只冲到它身前
+  let dist = s.dist, near = 999;   // 火影式吸附：前方 120 像素内有敌人，出刀那一下直接贴到它身前
   for (const e of alive()) {
     const dx = (e.x - p.x) * p.face;
-    if (dx > 0 && dx < 150 && Math.abs(e.y - p.y) < 50) dist = Math.min(dist, Math.max(6, dx - 26));
+    if (dx > 0 && dx < 120 && Math.abs(e.y - p.y) < 50) near = Math.min(near, dx);
   }
-  p.kcV = dist / s.mt;
+  if (near < 999) dist = clamp(near - 26, 4, 80);
+  p.kcDist = dist;
 }
 function updateComboB(p, dt) {
-  const s = KCOMBO[p.combo];
-  p.vx = p.face * p.kcV * clamp(1 - (p.t - s.mt) / 0.05, 0, 1);   // 冲完 0.05 秒内刹住，不拖泥带水
-  if (p.t < s.mt && Math.floor(p.t / 0.03) !== Math.floor((p.t - dt) / 0.03)) { afterImage(p); Object.assign(R.fx[R.fx.length - 1], { red: true, soft: true, back: true }); }   // 淡酒红残影，画在主角身后
-  if (!p.hitDone && p.t >= kcAt(s, s.hit)) { p.hitDone = true; doHitB(p, s); }
-  const chainAt = kcAt(s, 3), end = kcAt(s, 4);   // 排队了就在「收」之前直接接下一段
-  if (p.queued && p.combo < 3 && p.t >= chainAt) { p.comboGap = 0; startComboB(p, p.combo + 1); return; }
+  const s = KCOMBO[p.combo], t0 = s.d[0], t1 = kcHit(s), end = t1 + s.d[2] + KREC;
+  // 位移只在拖影那一拍：先快后慢（ease-out，速度 2(1-k)），蓄力和收势都站定
+  // 拖影只有两三帧，按速度积分会冲过头：每帧直接算出这一刻该在的位置（ease-out），再换成速度交给物理
+  const k = (p.t - t0) / s.d[1];
+  if (k >= 0 && !p.kcFx) { p.kcFx = true; p.kcX0 = p.x; comboSmearFx(p, s); }
+  if (k >= 0 && !p.kcDone) { const kk = Math.min(1, k); p.vx = (p.kcX0 + p.face * p.kcDist * (1 - (1 - kk) * (1 - kk)) - p.x) / dt; if (k >= 1) p.kcDone = true; }
+  else p.vx = 0;
+  if (k >= 0 && p.t < t1 + 0.06 && Math.floor(p.t / 0.02) !== Math.floor((p.t - dt) / 0.02)) { afterImage(p); Object.assign(R.fx[R.fx.length - 1], { red: true, soft: true, back: true }); }
+  if (!p.hitDone && p.t >= t1) { p.hitDone = true; doHitB(p, s); }
+  if (p.queued && p.combo < 3 && p.t >= t1 + 0.05) { p.comboGap = 0; startComboB(p, p.combo + 1); return; }   // 收势刚定住就能接下一刀
   if (p.t >= end) { p.comboGap = 0; setSt(p, 'idle'); if (p.combo === 3) p.combo = -1; }
+}
+// 出刀瞬间：刀弧 + 身后速度线
+function comboSmearFx(p, s) {
+  R.fx.push({ k: 'karc', x: p.x, y: p.y, face: p.face, ...s.arc, t: 0, life: 0.22 });
+  for (let j = 0; j < 5; j++) R.fx.push({ k: 'kline', x: p.x - p.face * rnd(10, 50), y: p.y - rnd(8, 44), face: p.face, len: rnd(20, 50), t: 0, life: 0.15 });
 }
 function doHitB(p, s) {
   snd(s.snd, s.fin ? { rate: 0.8 } : undefined);
   vfx('b_sl' + s.sl, p.x + p.face * s.sx, p.y + s.sy, { flip: p.face < 0, vflip: s.vf });
   const box = faceBox(p, s.box);
-  let n = 0;
+  let n = 0, first = null;
   for (const e of alive()) {
     if (!overlap(box, eBox(e))) continue;
     strike(e, s.dmg, { kb: p.face * s.kb, launch: s.launch, basic: true, third: !!s.fin });
+    if (!first) first = e;
     n++;
   }
   reflectBalls(p, box);
   if (!n) return;
   R.stop = Math.max(R.stop, s.stop); R.shake = Math.max(R.shake, s.shake);
-  if (s.fin) { R.slowT = 0.2; R.flash = Math.max(R.flash, 0.08); burst(p.x + p.face * 30, p.y - 20, 12, { col: 'blood', v0: 80, v1: 260 }); }
+  // 火星往打的方向喷（白 + 红两层）、淡粉白闪
+  const hx = first.x, hy = first.y - 18;
+  R.fx.push({ k: 'kspark', x: hx, y: hy, t: 0, life: 0.45, ps: [...sparkSet(p.face, s.fin ? 26 : 12, '#ffe0e6', 80, s.fin ? 320 : 220), ...sparkSet(p.face, s.fin ? 14 : 6, '#ff2e55', 60, 200)] });
+  R.flash = Math.max(R.flash, s.fin ? 0.15 : 0.04); R.flashCol = '255,235,240';
+  if (s.pillar) { R.fx.push({ k: 'kpillar', x: hx, y: first.y, t: 0, life: 0.35 }); ember(hx, first.y, 10); }
+  if (s.fin) {
+    R.slowT = 0.25;
+    const gx = p.x + p.face * 30;
+    vfx('w_slam', gx, p.y + 1, { t: 1.5 / 16 });
+    R.fx.push({ k: 'kcrack', x: gx, y: p.y, t: 0, life: 0.6 });
+    ember(gx, p.y, 24);
+    burst(p.x + p.face * 30, p.y - 20, 12, { col: 'blood', v0: 80, v1: 260 });
+  }
+}
+function sparkSet(face, n, c, v0, v1) {
+  const out = [];
+  for (let i = 0; i < n; i++) {
+    const a = (face > 0 ? 0 : Math.PI) + rnd(-0.9, 0.9), v = rnd(v0, v1);
+    out.push({ vx: Math.cos(a) * v, vy: Math.sin(a) * v - 40, c, life: rnd(0.25, 0.45) });
+  }
+  return out;
+}
+// 余烬：往上飘的红白小点
+function ember(x, y, n) {
+  const ps = [];
+  for (let i = 0; i < n; i++) ps.push({ vx: rnd(-40, 40), vy: rnd(-70, -15), c: Math.random() < 0.5 ? '#ff3b5c' : '#ffd0d8', s: 1 });
+  R.fx.push({ k: 'parts', x, y: y - 6, t: 0, life: rnd(0.8, 1.1), ps, g: -10 });
 }
 
 /* ---------- kit=b 刺客技能 ---------- */
 function startWheel(p) {
   setSt(p, 'wheel'); p.wheelHit = new Map(); p.wheel = { sub: p.ground ? 0 : 1, tick: 0, spin: 0 };
-  if (p.ground) { p.vy = KB.wheel.riseVy; p.vx = p.face * KB.wheel.riseVx; p.ground = false; }
+  if (p.ground) { p.vy = 0; p.vx = 0; }   // 先蹲一下再起跳
   else { p.vx = p.face * KB.wheel.vx; p.vy = KB.wheel.vy; }
   snd('thrust', { rate: 0.8 });
 }
 function updateWheel(p, dt) {
   const w = p.wheel, W2 = KB.wheel;
   w.spin += dt * Math.PI * 2 / 0.2;
-  if (w.sub === 0) {   // 起跳
-    p.vy = W2.riseVy * (1 - p.t / W2.rise);
-    if (p.t >= W2.rise) { w.sub = 1; p.t = 0; snd('atk3'); }
+  if (w.sub === 0) {   // 蹲 → 起跳上挑
+    if (p.t < W2.crouch) { p.vx = 0; p.vy = 0; return; }
+    if (!w.upper) {   // 起跳这一刀：把面前的敌人挑起来，送进后面的旋转里
+      w.upper = true; p.ground = false; p.vx = p.face * W2.riseVx;
+      snd('atk2', { rate: 1.1 });
+      vfx('b_sl2', p.x + p.face * 18, p.y - 30, { flip: p.face < 0 });
+      burst(p.x, p.y, 8, { col: 'stone', a0: Math.PI, a1: Math.PI * 2, v0: 40, v1: 140, up: 30 });
+      const box = faceBox(p, { x0: -6, x1: 54, y0: -64, y1: 4 });
+      for (const e of alive()) if (overlap(box, eBox(e))) { strike(e, W2.upDmg, { skill: 'i', launch: e.boss ? 0 : -260, kb: p.face * 40 }); R.stop = Math.max(R.stop, 0.04); }
+    }
+    const k = (p.t - W2.crouch) / W2.rise;
+    p.vy = W2.riseVy * (1 - k);
+    if (k >= 1) { w.sub = 1; p.t = 0; snd('atk3'); }
     return;
   }
   if (w.sub === 1) {   // 斜向旋转下落，沿途连砍
@@ -832,10 +913,23 @@ function wheelSlam(p) {
   }
 }
 function startPhase(p) {
-  setSt(p, 'phase'); p.perfectUsed = false; p.inv = KB.phase.inv;
-  p.vx = p.face * KB.phase.v; p.vy = 0;
-  snd('blink'); afterImage(p);
+  setSt(p, 'phase'); p.perfectUsed = false; p.phasePerf = false; p.parryCut = false; p.inv = KB.phase.t + 0.02;
+  p.vx = 0; p.vy = Math.min(p.vy, 0);
+  snd('blink', { rate: 1.4 });
+  R.fx.push({ k: 'kstance', t: 0, life: KB.phase.t });   // 跟着主角：往里收的白金圈 + 刀口一闪
   checkPerfect(p);
+}
+// 招架成立：刀身上「锵」地迸出金色火星和星芒，定格、白闪，敌人被震退
+function parryFx(p, e) {
+  p.phasePerf = true; p.perfAt = p.t; p.inv = 9;
+  R.stop = Math.max(R.stop, 0.1); R.shake = Math.max(R.shake, 4); R.flash = 0.15; R.flashCol = '255,248,225';
+  const bx = p.x + p.face * 16, by = p.y - 34;   // 架在身前那段刀身
+  R.fx.push({ k: 'kstar', x: bx, y: by, t: 0, life: 0.3 });
+  R.fx.push({ k: 'krays', x: bx, y: by, t: 0, life: 0.3 });
+  R.fx.push({ k: 'kspark', x: bx, y: by, t: 0, life: 0.5, ps: [...sparkSet(p.face, 16, '#ffe9a0', 100, 300), ...sparkSet(-p.face, 8, '#fff6dc', 60, 200)] });
+  if (e && !e.boss) { e.x += p.face * 10; e.vx = p.face * 160; }
+  snd('atk2', { rate: 1.7 });
+  say('招架', '#fff2c0');
 }
 function startSub(p, dir) {
   p.subN--; if (p.subN === KB.sub.n - 1) p.subT = KB.sub.cd;
@@ -929,7 +1023,15 @@ function updateCuts(dt) {
     if (c.wait) continue;
     c.t += dt;
     if (c.done || c.t < c.delay) continue;
-    c.done = true; snd('iaiCut');
+    c.done = true;
+    if (c.kb) {
+      for (const ln of c.lines) vfx('u_pierce', c.x + ln.dx, c.y + ln.dy, { rot: ln.a, flip: Math.random() < 0.5 });
+      if (c.big) { vfx('b_hit', c.x, c.y - 4); R.fx.push({ k: 'kspark', x: c.x, y: c.y, t: 0, life: 0.5, ps: sparkSet(1, 8, '#ff2e55', 80, 260).concat(sparkSet(-1, 8, '#ffe0e6', 80, 260)) }); }
+      if (c.boom) { snd('iaiCut'); snd('atk2', { rate: 0.7 }); R.shake = 8; R.slowT = 0.3; R.flash = 0.15; R.flashCol = '255,240,245'; buzz(120); }
+      if (c.e) strike(c.e, c.dmg, { skill: 'o', stun: SK.o.stun, mark: c.mk ? SK.u.mark : 0 });
+      continue;
+    }
+    snd('iaiCut');
     const col = c.red ? 'blood' : 'soul';
     for (const ln of c.lines) vfx('cut_' + col, c.x + ln.dx, c.y + ln.dy, { rot: ln.a + Math.PI / 4 });
     vfx((c.area || c.big ? 'exp2_' : 'exp1_') + col, c.x, c.y);
@@ -942,15 +1044,19 @@ function updateCuts(dt) {
   R.cuts = R.cuts.filter((c) => !c.done || c.t < c.delay + 0.25);
 }
 
+const KBOOM = 0.3;   // kit=b 瞬狱：收刀后停多久刀口才一起炸
+const EYE = { t: 0.55, fw: 768, fh: 162 };   // kit=b 瞬狱开场眼睛特写：闭眼 → 睁缝 → 全睁
 // O 瞬狱（时空断裂中）：在屏幕内所有敌人之间来回穿梭，每只留下 3 道斩痕，收刀时一起爆开；之后断裂结束
 function startStorm(p, red = false) {
   const list = alive().filter((e) => onScreen(p, e)).sort((a, b) => a.x - b.x).slice(0, SK.o.stormMax);
   if (!list.length) return false;
   if (Math.abs(list[list.length - 1].x - p.x) < Math.abs(list[0].x - p.x)) list.reverse();   // 从近的一端开始
-  p.storm = { list, i: 0, t: 0, red, cages: [], w0: R.witch };
+  const kb = KIT_B && !red;   // kit=b：酒红版瞬狱
+  p.storm = { list, i: 0, t: 0, red, cages: [], w0: R.witch, kb };
   snd('storm', red ? { rate: 0.8 } : undefined);
   setSt(p, 'storm'); p.inv = 9; p.vx = 0; p.vy = 0;
   if (R.blade) R.blade = null;
+  if (kb) { R.eye = { t: 0 }; R.stop = Math.max(R.stop, EYE.t); return true; }   // 先放眼睛特写，全场定格
   R.flash = 0.12; if (red) R.flashCol = '255,60,70';
   say(red ? '血狱' : '瞬狱', red ? '#ff6a6a' : '#8fd8ff');
   return true;
@@ -962,14 +1068,24 @@ function updateStorm(p, dt) {
     const e = s.list[s.i++];
     const nx = clamp(e.x + (s.i % 2 ? -22 : 22), 10, ROOM.w - 10);
     afterImage(p);
-    R.fx.push({ k: 'line', x: p.x, y: p.y - 20, x1: nx, y1: e.y - 20, t: 0 });
+    if (s.kb) {   // 酒红残影 + 拖线
+      R.fx[R.fx.length - 1].red = true;
+      R.fx.push({ k: 'kslash', x: p.x, y: p.y - 20, x1: nx, y1: e.y - 20, t: 0, life: 0.3 });
+    } else R.fx.push({ k: 'line', x: p.x, y: p.y - 20, x1: nx, y1: e.y - 20, t: 0 });
     p.x = nx; p.y = e.y; p.face = sign(e.x - p.x) || p.face;
+    if (s.kb) {   // 每到一只：一道大号酒红刀弧（上撩 / 下劈交替）+ 火星
+      const up = s.i % 2;
+      R.fx.push({ k: 'karc', x: e.x, y: e.y, face: p.face, dx: 0, dy: -20, rx: 34, ry: 30, a0: up ? 1.9 : -2.4, a1: up ? -1.4 : 0.9, t: 0, life: 0.26, big: true });
+      R.fx.push({ k: 'kspark', x: e.x, y: e.y - 20, t: 0, life: 0.4, ps: sparkSet(p.face, 8, '#ff2e55', 60, 200).concat(sparkSet(p.face, 4, '#ffe0e6', 80, 240)) });
+      snd('atk3', { rate: 1.1 + 0.1 * (s.i % 3) });
+    }
     if (s.red) s.cages.push(vfx('prison', e.x, e.y, { ground: true, hold: [2, 3] }));   // 血狱：脚下炸出血棘牢笼，收刀时一起斩碎
     const nCuts = s.red ? (mv('rageStormCuts') ? 5 : SK.o.stormCuts) : (mv('stormCuts5') ? 5 : SK.o.stormCuts);
     for (let k = 0; k < nCuts; k++) {
       const c = cutOn(e, 0, (s.red ? TSK.stormDmg : SK.o.stormDmg) * (!s.red && mv('iaiOnly') ? 1.6 : 1), true);
       c.big = k === nCuts - 1;   // 每只敌人最后一道带大爆炸
       c.red = s.red; c.mk = !!mv('stormMark');
+      if (s.kb) { c.kb = true; c.lines[0].a = [-0.75, 0.75, 0.1][k % 3]; c.lines[0].l = 30; }   // 酒红 X 刀口（第 3 道横着）
       R.cuts.push(c);
     }
     R.shake = Math.max(R.shake, 1);
@@ -977,10 +1093,16 @@ function updateStorm(p, dt) {
   if (s.i >= s.list.length && s.t >= s.list.length * SK.o.stormStep + 0.25) {
     // 收刀：全部斩痕依次爆开
     let k = 0;
-    for (const c of R.cuts) if (c.wait) { c.wait = false; c.t = 0; c.delay = 0.1 + (k++ % SK.o.stormCuts) * 0.06; }
+    let first = true;
+    for (const c of R.cuts) if (c.wait) {
+      c.wait = false; c.t = 0; c.delay = c.kb ? KBOOM : 0.1 + (k++ % SK.o.stormCuts) * 0.06;
+      if (c.kb && first) { c.boom = true; first = false; }   // 第一道负责全屏演出
+    }
     s.cages.forEach(releaseFx);
     p.inv = p.form === 'blood' ? p.inv : 0.4; p.storm = null;
-    R.witch = !s.red && mv('stormKeep') ? Math.max(0.3, s.w0 * 0.5) : Math.min(R.witch, 0.3); R.stop = 0.08; R.shake = 5;
+    R.witch = !s.red && mv('stormKeep') ? Math.max(0.3, s.w0 * 0.5) : Math.min(R.witch, 0.3);
+    if (s.kb) { R.stop = 0.05; R.shake = 2; R.fx.push({ k: 'kboom', x: p.x, y: p.y, t: 0, delay: KBOOM, life: 0.5 }); }   // 收刀那一下静，KBOOM 秒后炸
+    else { R.stop = 0.08; R.shake = 5; }
     buzz(80);
     p.ground = landOn(p, p.y, true) || p.y >= ROOM.ground;
     setSt(p, 'sheathe');
@@ -1185,12 +1307,12 @@ function triggerPerfect(p, e) {
   if (p.st === 'thrust' && mv('thrustParry')) { gainSoul(1); p.cd.u = 0; }
   if (mv('pdStack')) { p.pdStacks = Math.min(3, p.pdStacks + 1); p.pdT = 8; }
   if (mv('pdCrit')) p.pdEye = 3;
-  if (KIT_B && p.st === 'phase') { p.phasePerf = true; p.cd.o = 0; say('完美虚化　再按 O 瞬狱', '#8fd8ff'); }
+  if (KIT_B && p.st === 'phase') parryFx(p, e);
   if (mv('pdShield') && !mv('noShield')) p.shield = Math.round(p.mx * mv('pdShield'));
   R.fx.push({ k: 'ring', x: p.x, y: p.y - 18, t: 0 });
   buzz(40);
   if (R.witch > 0) return;
-  R.witch = WITCH_T + mv('pdSlow'); R.banner = 1.2; R.stop = 0.06; R.flash = 0.15;
+  R.witch = WITCH_T + mv('pdSlow'); R.banner = KIT_B ? 0 : 1.2; R.stop = 0.06; R.flash = 0.15;
   R.fx.push({ k: 'pulse', x: p.x, y: p.y - 18, t: 0 });
 }
 
@@ -1214,7 +1336,7 @@ function hurtEnemy(e, dmg, kb, launch, o = {}) {
   R.nums.push({ x: e.x + rnd(-10, 10), y: e.y - 34 - rnd(0, 8), v: dmg, c: o.crit ? '#ffd23a' : '#fff2c0', big: o.crit, t: 0 });   // 抖开，挤在一起的敌人数字不糊成一团
   if (KIT_B && R.p.form !== 'blood') vfx('b_hit', e.x + rnd(-4, 4), e.y - 18 + rnd(-4, 4), { flip: R.p.x > e.x });   // kit=b：十字爆点，血点往打的方向喷
   else vfx('hit_' + tint(), e.x + rnd(-4, 4), e.y - 14 + rnd(-4, 4), { rot: rnd(0, 6.28) });
-  if (o.crit) vfx('exp1_' + tint(), e.x, e.y - 16);
+  if (o.crit) { if (KIT_B) vfx('b_hit', e.x, e.y - 18, { flip: R.p.x > e.x }); else vfx('exp1_' + tint(), e.x, e.y - 16); }   // kit=b：暴击也用酒红十字爆点
   if (e.hp <= 0 && e.boss) { bossDown(e); return; }
   if (e.hp <= 0) {
     e.st = 'dead'; R.kills++;
@@ -1669,7 +1791,7 @@ function heroFrame(p) {
     case 'land': return blood ? ['t_stomp', 3] : ['jump', 5];
     case 'dash': return f('dash', 20, false);
     case 'atk': {
-      if (KIT_B && !blood) { const s = KCOMBO[p.combo]; return [s.a, s.f0 + kcFrame(s, p.t)]; }
+      if (KIT_B && !blood) { const s = KCOMBO[p.combo], k = kcFrame(s, p.t); return k === 3 ? ['b_rec', p.combo] : [s.a, s.f0 + k]; }   // 蓄力 / 拖影 / 收势 / 收招
       if (!blood) return f('combo', 14, false, COMBO_STEP[p.combo].f0, 4);
       const s = TCOMBO[p.combo];
       return f(s.a, T_FPS, false, s.f0, s.n);
@@ -1683,16 +1805,16 @@ function heroFrame(p) {
     case 'throw': return f('i_throw', 24, false);
     case 'blink': return f('blink', 28, false);
     case 'iai': return f('o_iai', 29, false);
-    case 'storm': return blood ? ['t_sweep', 1 + (Math.floor(p.t * 20) % 2)] : ['blink', 0];
+    case 'storm': return blood ? ['t_sweep', 1 + (Math.floor(p.t * 20) % 2)] : KIT_B ? ['b_k12', p.storm && p.storm.i % 2 ? 4 : 1] : ['blink', 0];
     case 'wheel': {   // 葬轮：蹲→起跳 / 空中前倾绕身体转（右侧→正面→左侧→背面，循环）/ 落地砸→收招
       const w = p.wheel; if (!w) return ['i_wheel', 2];
-      if (w.sub === 0) return ['i_wheel', p.t < 0.05 ? 0 : 1];
+      if (w.sub === 0) return ['i_wheel', p.t < KB.wheel.crouch ? 0 : 1];
       if (w.sub === 1) return ['i_wheel', 2 + (Math.floor(w.spin / (Math.PI / 2)) % 4)];
       return ['i_wheel', p.t < 0.1 ? 6 : 7];
     }
-    case 'phase': return f('dash', 20, false);
+    case 'phase': return p.phasePerf ? ['b_guard', p.parryCut ? 3 : 2] : ['b_guard', p.t < KB.phase.t ? Math.floor(p.t / 0.1) % 2 : 0];   // 招架：架刀（两帧绷着）→ 成立时震刀 → 反击出刀
     case 'sub': return ['jump', 3];
-    case 'sheathe': return blood ? ['t_idle', 0] : ['o_iai', 11];
+    case 'sheathe': return blood ? ['t_idle', 0] : KIT_B ? ['b_k12', 5] : ['o_iai', 11];   // kit=b：o_iai 素材和表对不上，收刀用收势帧
     case 'transform': return f('transform', 12, false);
     case 'rdash': return ['t_sweep', 0];
     case 'train': return f('t_drop', T_FPS, false);
@@ -1706,14 +1828,39 @@ function drawHero(p, cx, cy) {
   const [name, i] = heroFrame(p);
   const m = HERO_A[name]; const im = rImg(`hero2/hero_${name}.png`);
   if (!m || !ready(im)) return;
-  if (p.inv > 0 && p.form !== 'blood' && !['dash', 'thrust', 'blink', 'storm', 'sheathe', 'transform'].includes(p.st) && Math.floor(R.time * 20) % 2 === 0) return;
+  if (p.inv > 0 && p.form !== 'blood' && !['dash', 'thrust', 'blink', 'storm', 'sheathe', 'transform', 'phase'].includes(p.st) && Math.floor(R.time * 20) % 2 === 0) return;   // 招架架刀不闪
   rx.save();
   rx.translate(Math.round(p.x - cx), Math.round(p.y - cy) + 1);
   if (p.face < 0) rx.scale(-1, 1);
-  if (p.st === 'phase') { rx.globalAlpha = 0.4; rx.filter = 'sepia(1) hue-rotate(160deg) saturate(3) brightness(1.4)'; }
+  if (m.sc) rx.scale(m.sc, m.sc);   // sc：这组素材生成时比例不一，画的时候缩回与待机同样大小
+  if (KIT_B && p.st === 'atk' && p.form !== 'blood') { const D = comboDeform(p); rx.translate(D.dx, 0); rx.rotate(D.rot); rx.scale(D.sx, D.sy); }
   rx.drawImage(im, i * m.fw, 0, m.fw, m.fh, -Math.round(m.anchorX), -m.fh, m.fw, m.fh);
+  const glow = !KIT_B || p.form === 'blood' ? null
+    : p.st === 'atk' && kcFrame(KCOMBO[p.combo], p.t) === 1 ? ['#ff4d70', 0.4]
+    : p.st === 'phase' ? ['#fff0c0', p.phasePerf ? 0.35 : 0.12 + 0.1 * Math.sin(R.time * 40)] : null;
+  if (glow) { const tc = tintSheet(name, im, glow[0]); if (tc) { rx.globalCompositeOperation = 'lighter'; rx.globalAlpha = glow[1]; rx.drawImage(tc, i * m.fw, 0, m.fw, m.fh, -Math.round(m.anchorX), -m.fh, m.fw, m.fh); } }
   rx.restore();
   if (p.st === 'wheel' && p.wheel && p.wheel.sub === 1) drawWheelVortex(p, cx, cy);
+}
+// 普攻形变（以脚底为原点，朝向已翻好）：蓄力往下压、往后拧；拖影顺着冲的方向拉长、前倾；
+// 收势落点先压扁再回弹，前倾慢慢回正，位置多冲一点再拉回；收招时身体往上回一下
+function comboDeform(p) {
+  const s = KCOMBO[p.combo], t0 = s.d[0], t1 = t0 + s.d[1], t2 = t1 + s.d[2], t = p.t;
+  const spring = (u, amp, w) => amp * Math.exp(-u / 0.05) * Math.cos(u * w);
+  if (t < t0) { const k = t / t0; return { sx: 1 + 0.05 * k, sy: 1 - 0.06 * k, rot: -0.04 * k, dx: 0 }; }
+  if (t < t1) { const k = (t - t0) / s.d[1]; return { sx: 1.16 - 0.06 * k, sy: 0.9 + 0.03 * k, rot: 0.1, dx: 0 }; }
+  if (t < t2) { const u = t - t1; return { sx: 1 + spring(u, 0.08, 60), sy: 1 - spring(u, 0.08, 60), rot: 0.1 * Math.exp(-u / 0.06), dx: spring(u, 3, 45) }; }
+  return { sx: 1, sy: 1 + 0.03 * Math.sin((t - t2) / KREC * Math.PI), rot: 0, dx: 0 };
+}
+// 整张帧图染成单色（发光叠加用），按图名 + 颜色缓存
+const TINTS = {};
+function tintSheet(name, im, col) {
+  const id = name + col;
+  if (TINTS[id]) return TINTS[id];
+  if (!im.width) return null;
+  const c = document.createElement('canvas'); c.width = im.width; c.height = im.height;
+  const g = c.getContext('2d'); g.drawImage(im, 0, 0); g.globalCompositeOperation = 'source-in'; g.fillStyle = col; g.fillRect(0, 0, c.width, c.height);
+  return (TINTS[id] = c);
 }
 /* 葬轮：绕身体的刀光漩涡，斜 45 度、压扁，发光叠加 */
 function drawWheelVortex(p, cx, cy) {
@@ -1978,6 +2125,14 @@ function drawCuts(cx, cy) {
     for (const ln of c.lines) {
       const ax = Math.cos(ln.a) * ln.l / 2, ay = Math.sin(ln.a) * ln.l / 2;
       const px = x + ln.dx, py = y + ln.dy;
+      if (c.kb && post < 0) {
+        rx.save(); rx.globalCompositeOperation = 'lighter'; rx.lineCap = 'round';
+        for (const [col, w] of [['200,20,60', 4], ['255,235,240', 1]]) {
+          rx.strokeStyle = `rgba(${col},${0.5 + 0.5 * pre})`; rx.lineWidth = w;
+          rx.beginPath(); rx.moveTo(px - ax, py - ay); rx.lineTo(px + ax, py + ay); rx.stroke();
+        }
+        rx.restore(); continue;
+      }
       if (post < 0) {
         rx.strokeStyle = c.red ? `rgba(255,120,120,${0.25 + 0.6 * pre})` : `rgba(200,235,255,${0.25 + 0.6 * pre})`; rx.lineWidth = 1;
       } else {
@@ -2066,6 +2221,80 @@ function drawFx(cx, cy, back = false) {
       rx.beginPath(); rx.ellipse(x, y, 40, 14, tilt, f.a, f.a + 2.4); rx.stroke();
       rx.strokeStyle = `rgba(255,190,200,${0.6 * (1 - k)})`; rx.lineWidth = 1;
       rx.beginPath(); rx.ellipse(x, y, 34, 11, tilt, f.a + 0.3, f.a + 2.0); rx.stroke();
+    } else if (f.k === 'karc') {   // 普攻刀弧：从起点扫到终点，两头尖中间粗，暗红 / 亮红 / 白芯三层叠加
+      const reveal = Math.min(1, f.t / 0.04), fade = Math.max(0, 1 - Math.max(0, f.t - 0.04) / 0.18), N = 28, S = f.big ? 1.25 : 1;
+      if (fade <= 0) continue;
+      rx.save(); rx.globalCompositeOperation = 'lighter'; rx.lineCap = 'round';
+      for (const [col, w, al] of [['150,10,40', 9, 0.7], ['255,50,90', 5, 0.9], ['255,235,240', 2, 1]]) {
+        rx.strokeStyle = `rgba(${col},${al * fade})`;
+        for (let i = 0; i < N; i++) {
+          const s0 = i / N, s1 = (i + 1) / N; if (s1 > reveal) break;
+          const th = Math.sin(Math.PI * (s0 + s1) / 2); if (th <= 0.02) continue;
+          const A0 = f.a0 + (f.a1 - f.a0) * s0, A1 = f.a0 + (f.a1 - f.a0) * s1, ox = x + f.face * f.dx, oy = y + f.dy;
+          rx.lineWidth = w * S * th; rx.beginPath();
+          rx.moveTo(ox + f.face * Math.cos(A0) * f.rx * S, oy + Math.sin(A0) * f.ry * S);
+          rx.lineTo(ox + f.face * Math.cos(A1) * f.rx * S, oy + Math.sin(A1) * f.ry * S); rx.stroke();
+        }
+      }
+      rx.restore();
+    } else if (f.k === 'kline') {   // 冲刺速度线
+      const k = f.t / f.life; if (k >= 1) continue;
+      rx.fillStyle = `rgba(255,120,150,${0.5 * (1 - k)})`;
+      const xx = x - f.face * k * 30;
+      rx.fillRect(f.face > 0 ? xx - f.len : xx, y, f.len, 1);
+    } else if (f.k === 'kspark') {   // 命中火星：带速度的短线，受重力；delay 秒后才炸
+      const ft = f.t - (f.delay || 0); if (ft < 0) continue;
+      rx.save(); rx.globalCompositeOperation = 'lighter'; rx.lineWidth = 1;
+      for (const q of f.ps) {
+        const k = ft / q.life; if (k >= 1) continue;
+        const px = x + q.vx * ft, py = y + q.vy * ft + 130 * ft * ft;
+        rx.strokeStyle = q.c; rx.globalAlpha = 1 - k;
+        rx.beginPath(); rx.moveTo(px, py); rx.lineTo(px - q.vx * 0.03, py - (q.vy + 260 * ft) * 0.03); rx.stroke();
+      }
+      rx.restore();
+    } else if (f.k === 'kpillar') {   // 第 3 刀上挑：敌人脚下冲起的光柱
+      const k = f.t / f.life; if (k >= 1) continue;
+      const w = 10 * (1 - k), gr = rx.createLinearGradient(0, y - 90, 0, y);
+      gr.addColorStop(0, 'rgba(255,40,80,0)'); gr.addColorStop(1, `rgba(255,200,215,${1 - k})`);
+      rx.save(); rx.globalCompositeOperation = 'lighter'; rx.fillStyle = gr; rx.fillRect(Math.round(x - w / 2), y - 90, Math.round(w), 90); rx.restore();
+    } else if (f.k === 'kcrack') {   // 第 4 刀落地：地面裂纹 + 扩散的冲击圈
+      const k = f.t / f.life; if (k >= 1) continue;
+      rx.save(); rx.globalCompositeOperation = 'lighter'; rx.lineWidth = 1;
+      rx.strokeStyle = `rgba(255,60,90,${1 - k})`;
+      for (let j = -3; j <= 3; j++) { rx.beginPath(); rx.moveTo(x, y); rx.lineTo(x + j * 14, y + (j % 2 ? 1 : 2)); rx.lineTo(x + j * 24, y + 3); rx.stroke(); }
+      rx.strokeStyle = `rgba(255,220,230,${0.8 * (1 - k)})`;
+      rx.beginPath(); rx.ellipse(x, y, 10 + k * 70, 3 + k * 8, 0, 0, Math.PI * 2); rx.stroke();
+      rx.restore();
+    } else if (f.k === 'kstance') {   // 招架架刀：白金圈往主角身上收，刀口闪一下
+      const k = f.t / f.life, p = R.p; if (k >= 1 || p.st !== 'phase' || p.phasePerf) continue;
+      const px = Math.round(p.x - cx), py = Math.round(p.y - cy) - 20;
+      rx.save(); rx.globalCompositeOperation = 'lighter';
+      rx.strokeStyle = `rgba(255,240,200,${0.3 + 0.6 * k})`; rx.lineWidth = 1 + k;
+      rx.beginPath(); rx.arc(px, py, 34 - 20 * k, 0, Math.PI * 2); rx.stroke();
+      rx.strokeStyle = `rgba(140,215,255,${0.5 * (1 - k)})`; rx.lineWidth = 1;
+      rx.beginPath(); rx.arc(px, py, 44 - 26 * k, 0, Math.PI * 2); rx.stroke();
+      if (k < 0.35) {   // 刀口一闪：十字星
+        const gx = px - p.face * 14, gy = py + 10, r = 10 * Math.sin(k / 0.35 * Math.PI);
+        rx.fillStyle = 'rgba(255,250,230,0.95)'; rx.fillRect(gx - r, gy, r * 2, 1); rx.fillRect(gx, gy - r * 0.6, 1, r * 1.2);
+      }
+      rx.restore();
+    } else if (f.k === 'kstar') {   // 招架：刀身上的金白十字星芒，先爆大再缩
+      const k = f.t / f.life; if (k >= 1) continue;
+      const r = 22 * (k < 0.2 ? k / 0.2 : 1 - (k - 0.2) / 0.8);
+      rx.save(); rx.globalCompositeOperation = 'lighter';
+      rx.fillStyle = `rgba(255,200,90,${1 - k})`; rx.fillRect(x - r, y - 1, r * 2, 3); rx.fillRect(x - 1, y - r * 0.7, 3, r * 1.4);
+      rx.fillStyle = `rgba(255,255,240,${1 - k})`; rx.fillRect(x - r * 0.7, y, r * 1.4, 1); rx.fillRect(x, y - r * 0.5, 1, r);
+      rx.beginPath(); rx.arc(x, y, 3 + 4 * (1 - k), 0, Math.PI * 2); rx.fill();
+      rx.restore();
+    } else if (f.k === 'krays') {   // 招架成立：刀身上往外炸的放射线
+      const k = f.t / f.life; if (k >= 1) continue;
+      rx.save(); rx.globalCompositeOperation = 'lighter'; rx.strokeStyle = `rgba(255,240,205,${1 - k})`; rx.lineWidth = 1;
+      for (let j = 0; j < 16; j++) {
+        const a = j / 16 * Math.PI * 2 + 0.2, r0 = 10 + 60 * k, r1 = r0 + 18 * (1 - k);
+        rx.beginPath(); rx.moveTo(x + Math.cos(a) * r0, y + Math.sin(a) * r0); rx.lineTo(x + Math.cos(a) * r1, y + Math.sin(a) * r1); rx.stroke();
+      }
+      rx.beginPath(); rx.arc(x, y, 8 + 50 * k, 0, Math.PI * 2); rx.stroke();
+      rx.restore();
     } else if (f.k === 'tomb') {   // 替身墓碑：立着挡刀，然后碎掉淡出
       const k = f.t / f.life; if (k >= 1) continue;
       rx.globalAlpha = k < 0.7 ? 1 : (1 - k) / 0.3;
@@ -2087,8 +2316,27 @@ function drawFx(cx, cy, back = false) {
       if (!m || !ready(im)) continue;
       rx.save(); rx.globalAlpha = (f.soft ? 0.32 : 0.5) * (1 - k);
       rx.filter = f.red ? 'brightness(0.8) sepia(1) hue-rotate(-40deg) saturate(6)' : 'brightness(0.7) sepia(1) hue-rotate(150deg) saturate(4)';
-      rx.translate(x, y + 1); if (f.face < 0) rx.scale(-1, 1);
+      rx.translate(x, y + 1); if (f.face < 0) rx.scale(-1, 1); if (m.sc) rx.scale(m.sc, m.sc);
       rx.drawImage(im, f.i * m.fw, 0, m.fw, m.fh, -Math.round(m.anchorX), -m.fh, m.fw, m.fh);
+      rx.restore();
+    } else if (f.k === 'kslash') {   // kit=b 瞬狱穿梭：酒红刀光拖线
+      const k = f.t / f.life; if (k >= 1) continue;
+      const x1 = Math.round(f.x1 - cx), y1 = Math.round(f.y1 - cy);
+      rx.save(); rx.globalCompositeOperation = 'lighter'; rx.lineCap = 'round';
+      for (const [col, w] of [['200,20,60', 7], ['255,60,100', 3], ['255,240,245', 1]]) {
+        rx.strokeStyle = `rgba(${col},${1 - k})`; rx.lineWidth = w * (1 - k * 0.5);
+        rx.beginPath(); rx.moveTo(x, y); rx.lineTo(x1, y1); rx.stroke();
+      }
+      rx.restore();
+    } else if (f.k === 'kboom') {   // kit=b 瞬狱收尾：一道白线斜着劈开画面，裂口张开再合上，白转红
+      const ft = f.t - (f.delay || 0); if (ft < 0) continue;
+      const k = ft / f.life; if (k >= 1) continue;
+      const L = RB_W * 1.5, rev = Math.min(1, k / 0.12), gap = k < 0.12 ? 0 : 14 * Math.sin(Math.min(1, (k - 0.12) / 0.5) * Math.PI), al = k < 0.6 ? 1 : 1 - (k - 0.6) / 0.4;
+      if (k > 0.1) { rx.fillStyle = `rgba(150,0,25,${0.3 * (1 - k)})`; rx.fillRect(0, 0, RB_W, RB_H); }
+      rx.save(); rx.translate(x, y - 22); rx.rotate(-0.18);   // 从主角收刀的位置斜着劈过整个画面 rx.globalCompositeOperation = 'lighter';
+      rx.fillStyle = `rgba(255,40,80,${0.45 * al})`; rx.fillRect(-L, -gap - 3, 2 * L * rev, gap * 2 + 6);
+      rx.fillStyle = `rgba(255,245,248,${al})`;
+      if (gap < 4) rx.fillRect(-L, -2, 2 * L * rev, 4); else { rx.fillRect(-L, -gap - 1, 2 * L, 2); rx.fillRect(-L, gap - 1, 2 * L, 2); }
       rx.restore();
     } else if (f.k === 'line') {   // 瞬身 / 瞬狱穿梭的一道白光
       const k = f.t / 0.2; if (k >= 1) continue;
@@ -2216,6 +2464,68 @@ function paintCutin(im, t) {
     ctx.fillRect(ex - 18 * k, ey - 1, 36 * k, 3); ctx.fillRect(ex - 1, ey - 9 * k, 3, 18 * k);
   }
 }
+// kit=b 瞬狱开场：画面上方中间飞进一块斜切小碎片，里面眼睛 闭 → 睁缝 → 全睁亮瞳（白闪、推镜、红光往右喷、震），然后碎成几片飞散
+const EYE_SH = { w: 420, h: 112, pts: [[34, 0], [420, 10], [392, 112], [0, 100]] };
+const EYE_C = [210, 56];
+const EYE_TRIS = (() => {   // 中心连到每条边，再从边中点切一刀，得到 8 片三角碎片
+  const out = [], P = EYE_SH.pts;
+  for (let i = 0; i < P.length; i++) {
+    const a = P[i], b = P[(i + 1) % P.length], m = [(a[0] + b[0]) / 2 + (i % 2 ? 9 : -7), (a[1] + b[1]) / 2 + (i % 2 ? -5 : 6)];
+    out.push([EYE_C, a, m], [EYE_C, m, b]);
+  }
+  return out;
+})();
+function paintEye(im, t) {   // 在碎片局部坐标里画眼睛和特效（调用前已裁好形状）
+  const W = EYE_SH.w, Hh = EYE_SH.h;
+  ctx.fillStyle = '#000'; ctx.fillRect(-20, -20, W + 40, Hh + 40);
+  const fi = t < 0.12 ? 0 : t < 0.18 ? 1 : 2;
+  const zoom = fi === 2 ? 1 + 0.08 * Math.exp(-(t - 0.18) / 0.05) : 1, sc = W * 1.35 / EYE.fw * zoom;
+  const ex = EYE.fw * 0.45, ey = EYE.fh * 0.55;   // 眼睛在原图里的位置，对到碎片中心
+  ctx.drawImage(im, fi * EYE.fw, 0, EYE.fw, EYE.fh, W / 2 - ex * sc, Hh / 2 - ey * sc, EYE.fw * sc, EYE.fh * sc);
+  if (fi === 2) {
+    const g = Math.exp(-(t - 0.18) / 0.08), cx = W / 2, cy = Hh / 2;
+    ctx.globalCompositeOperation = 'lighter';
+    const rg = ctx.createRadialGradient(cx, cy, 0, cx, cy, 120);
+    rg.addColorStop(0, `rgba(255,60,90,${0.7 * g + 0.15})`); rg.addColorStop(1, 'rgba(255,0,40,0)');
+    ctx.fillStyle = rg; ctx.fillRect(0, 0, W, Hh);
+    for (let i = 0; i < 9; i++) {
+      const yy = cy - 22 + ((i * 37 + Math.floor(t * 60) * 11) % 44), L = 40 + ((i * 97) % 110);
+      ctx.fillStyle = `rgba(255,${40 + i * 8},${70 + i * 5},0.55)`;
+      ctx.fillRect(cx + 60 + ((i * 131 + t * 1400) % (W / 2)), yy, L, 2);
+    }
+    ctx.globalCompositeOperation = 'source-over';
+  }
+  if (t > 0.16 && t < 0.2) { ctx.fillStyle = `rgba(255,240,245,${1 - (t - 0.16) / 0.04})`; ctx.fillRect(0, 0, W, Hh); }   // 睁开瞬间白闪
+}
+function drawEye() {
+  const t = R.eye.t, im = rImg('hero2/cutin_eye.png');
+  if (!ready(im)) return;
+  const S = Math.min(1.2, VW / 1280 * 1.1), x0 = VW / 2 - EYE_SH.w * S / 2, y0 = H * 0.13;
+  ctx.save(); ctx.imageSmoothingEnabled = false;
+  if (t > 0.2 && t < 0.42) { const a = (1 - (t - 0.2) / 0.22) * 6; ctx.translate(rnd(-a, a), rnd(-a, a)); }
+  if (t < 0.48) {
+    const k = Math.min(1, t / 0.07), e = 1 - Math.pow(1 - k, 3);   // 从右边斜着飞进来
+    ctx.translate(x0 + (1 - e) * 160, y0 - (1 - e) * 20); ctx.rotate(-0.05); ctx.scale(S, S);
+    ctx.save(); polyPath(EYE_SH.pts); ctx.clip(); paintEye(im, t);
+    if (k < 1) { ctx.fillStyle = `rgba(255,255,255,${1 - k})`; ctx.fillRect(0, 0, EYE_SH.w, EYE_SH.h); }
+    ctx.restore();
+    ctx.lineWidth = 5; ctx.strokeStyle = '#0d0a12'; polyPath(EYE_SH.pts); ctx.stroke();
+    ctx.lineWidth = 3; ctx.strokeStyle = '#ff2e55'; polyPath(EYE_SH.pts); ctx.stroke();
+  } else {   // 碎成几片往外飞、转、淡出
+    const k = Math.min(1, (t - 0.48) / 0.14);
+    ctx.translate(x0, y0); ctx.rotate(-0.05); ctx.scale(S, S);
+    EYE_TRIS.forEach((tri, i) => {
+      const mx = (tri[0][0] + tri[1][0] + tri[2][0]) / 3, my = (tri[0][1] + tri[1][1] + tri[2][1]) / 3;
+      const dx = mx - EYE_C[0], dy = my - EYE_C[1], d = Math.hypot(dx, dy) || 1;
+      ctx.save(); ctx.globalAlpha = 1 - k;
+      ctx.translate(mx + dx / d * 90 * k, my + dy / d * 60 * k + 40 * k * k); ctx.rotate((i % 2 ? 1 : -1) * 1.6 * k); ctx.translate(-mx, -my);
+      polyPath(tri); ctx.save(); ctx.clip(); paintEye(im, 0.47); ctx.restore();
+      ctx.lineWidth = 2; ctx.strokeStyle = '#ff2e55'; polyPath(tri); ctx.stroke();
+      ctx.restore();
+    });
+  }
+  ctx.restore();
+}
 function drawCutin(x0, y0) {
   const c = R.cutin;
   if (!c) return;
@@ -2279,10 +2589,10 @@ function btnState(id) {
       return R.blade ? { label: '瞬', cd: 0 } : { label: '掷', cd: cdk('i') };
     case 's3':
       if (b) return { label: '狱', cd: cdk('o') };
-      if (KIT_B) return R.witch > 0 && (p.phasePerf || p.cd.o <= 0) ? { label: '狱', cd: 0 } : { label: '虚', cd: clamp(p.cd.o / (p.cd.o > KB.phase.cd ? KB.phase.perfCd : KB.phase.cd), 0, 1) };
+      if (KIT_B) return { label: '架', cd: clamp(p.cd.o / (p.cd.o > KB.phase.cd ? KB.phase.perfCd : KB.phase.cd), 0, 1) };
       return R.witch > 0 ? { label: '狱', cd: cdk('o') } : { label: '断', cd: cdk('o') };
     case 's4': return b ? { label: '葬' } : { label: '契', off: p.soul < rageNeed() || mv('sealIdx', -1) === 3 };
-    case 'dodge': return KIT_B && !b ? { label: '替' + p.subN, off: p.subN <= 0, cd: p.subN < KB.sub.n ? clamp(p.subT / KB.sub.cd, 0, 1) : 0 } : { label: b ? '影' : '闪' };
+    case 'dodge': return KIT_B && !b ? { label: '冲' + p.subN, cd: clamp(p.dashCd / KB.dashCd, 0, 1) } : { label: b ? '影' : '闪' };   // kit=b：冲刺，数字是剩余替身次数
   }
   return null;
 }
@@ -2320,7 +2630,7 @@ const roomScene = {
     preload(['gv/cemetery/background.png', 'gv/cemetery/mountains.png', 'gv/cemetery/graveyard.png', 'gv/cemetery/tileset.png',
       'gv/enemy-death.png', ...Object.keys(HOUND.anim).map((a) => `gv/hound/hell-hound-${a}.png`), ...Object.keys(EANIM).map((n) => `gv/enemies/${n}.png`),
       ...Object.keys(HERO_A).map((n) => `hero2/hero_${n}.png`), ...ROOM.props.map(([n]) => `gv/cemetery/${n}.png`),
-      ...Object.keys(VFX).map((n) => `vfx/${n}.png`), 'hero2/cutin_laugh.png']);
+      ...Object.keys(VFX).map((n) => `vfx/${n}.png`), 'hero2/cutin_laugh.png', 'hero2/cutin_eye.png']);
   },
   update(dt) {
     if (input.hit('pause') && !R.cfg) { setScene(titleScene); return; }
@@ -2331,6 +2641,7 @@ const roomScene = {
     R.time += dt;
     R.banner -= dt; R.soulWarn -= dt; R.flash -= dt;
     if (R.cutin && !R.cutin.freeze) R.cutin.t += dt;   // freeze：截图调试用，定格在某一刻
+    if (R.eye && !R.eye.freeze && (R.eye.t += dt) >= EYE.t + 0.1) R.eye = null;
     if (R.msg && (R.msg.t -= dt) <= 0) R.msg = null;
     bufferInput(R.p, dt);
     if (R.stop > 0) { R.stop -= dt; return; }
@@ -2346,7 +2657,7 @@ const roomScene = {
     updateShots(dt);
     updateRain(dt);
     updateShade(R.p, dt);
-    if ((R.witch > 0 || p.form === 'blood') && (R.afterT -= dt) <= 0 && (Math.abs(p.vx) > 40 || !p.ground) && p.st !== 'storm') {
+    if ((R.witch > 0 || p.form === 'blood') && (R.afterT -= dt) <= 0 && (Math.abs(p.vx) > 40 || !p.ground) && p.st !== 'storm' && p.st !== 'phase') {   // 招架被震退时不拖青色残影
       R.afterT = 0.05;
       afterImage(p);
     }
@@ -2404,6 +2715,7 @@ const roomScene = {
     drawCuts(cx, cy);
     if (R.flash > 0) { rx.fillStyle = `rgba(${R.flashCol || '230,245,255'},${R.flash / 0.15 * (R.flashCol ? 0.35 : 0.7)})`; rx.fillRect(0, 0, RB_W, RB_H); }
     else R.flashCol = null;
+    if (R.eye) { const t = R.eye.t, dk = t < 0.06 ? t / 0.06 : t < EYE.t ? 1 : Math.max(0, 1 - (t - EYE.t) / 0.1); rx.fillStyle = `rgba(10,0,4,${0.45 * dk})`; rx.fillRect(0, 0, RB_W, RB_H); }   // 眼睛特写：压暗
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(rbuf, 0, 0, RB_W, RB_H, 0, 0, RB_W * RB_S, H);
     // HUD 用原分辨率画，字清楚
@@ -2434,12 +2746,13 @@ const roomScene = {
     }
     if (R.msg) drawText(R.msg.text, VW / 2, 240, 36, R.msg.color, 'center');
     drawCutin(8 + sl, H - Math.round(CUTIN.h * CUTIN.s) + 2);   // 贴着左下角最底边，少挡战斗画面
+    if (R.eye) drawEye();
     if (!tc) {
       const l2 = p.form === 'blood'
         ? '暴走中（无敌）：J 刀气三连　空格 血影闪　U 碑雨　I 血爪乱舞　O 血狱　P 葬（提前收尾）'
-        : KIT_B ? 'J 普攻四连　U 送葬突刺　I 葬轮　O 虚化（闪准了再按 O 瞬狱）　P 血契'
+        : KIT_B ? 'J 普攻四连　U 送葬突刺　I 葬轮　O 招架（架刀时被打 = 反击瞬狱）　P 血契'
         : 'J 普攻　U 送葬突刺　I 掷碑（再按瞬身，按住 W 斜上扔）　O 断空（断裂中为瞬狱）　P 血契';
-      const l1 = `A/D 移动　K 跳（按住跳高，空中二段跳，下+K 穿落）　${KIT_B ? '空格 替身' : '空格 冲刺'}　空中下+J 下劈`;
+      const l1 = `A/D 移动　K 跳（按住跳高，空中二段跳，下+K 穿落）　${KIT_B ? '空格 冲刺（挨打后按=替身）' : '空格 冲刺'}　空中下+J 下劈`;
       drawText(R.cfg ? l1 : l1 + '　Esc 返回', VW / 2, H - 44, 24, 'rgba(220,210,235,.75)', 'center');
       drawText(l2, VW / 2, H - 14, 24, 'rgba(220,210,235,.75)', 'center');
     }

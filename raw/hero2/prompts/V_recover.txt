@@ -1,0 +1,11 @@
+The reference image shows, in its TOP ROW, four follow-through poses of one pixel-art character at the end of four sword attacks (left to right: attack 1, 2, 3, 4), and below them the character design sheet.
+
+Create a NEW pixel-art image: 4 columns x 1 row of 4 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Leave wide empty green space between figures so no two figures or swords touch.
+
+Each cell is the RECOVERY frame that comes right after the follow-through pose in the SAME column of the reference top row: the character is halfway between that follow-through pose and a relaxed ready stance (standing more upright, knees still slightly bent, the greatsword lowered and held loosely in one hand beside and slightly behind him, tip toward the ground behind). The motion should read as a smooth, elastic settle: the body is rising and pulling back, the coat tails and white hair are still swinging and trailing behind the movement (overlapping action), the free arm is coming back down.
+1. Recovering from attack 1: rising out of the deep forward lunge, the sword swinging back up from the ground behind him.
+2. Recovering from attack 2: the extended sword arm coming back in toward the hip, chest turning back to the side, coat tails still flared.
+3. Recovering from attack 3 (he was lifted slightly off the ground): landing lightly on the toes, the raised sword coming down behind his back.
+4. Recovering from attack 4: pushing up from the low crouch, lifting the sword out of the ground and dragging it back behind him, coat tails still floating up.
+
+Every frame: exactly the SAME character as the reference (white shoulder-length hair, wine-red long coat with gold buttons and trim, black trousers and boots, white bandages on the right forearm with a gold ring, huge dark steel greatsword with a flat square tip and gold engraved line), side view facing RIGHT, the SAME character scale as the top row of the reference in every cell; whole body and whole sword inside its own cell. Crisp pixel art in the same style as the top row, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing. NO effects, no motion trails, no afterimages, no dust, no background objects, no extra characters, no text.

@@ -1,0 +1,15 @@
+Pixel art KEY POSES for a 2D side-scrolling action game, in the style of the most fluid anime-style 2D action games (Dead Cells, Guilty Gear, Blazblue). Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line. He is a FAST, DEADLY ASSASSIN: every pose is EXTREME, low and leaning hard forward, with a strong curved line of action through the whole body, like a freeze-frame from an anime fight. Weight is always committed: deep lunges, twisted torso, the back leg fully stretched. Coat tails and hair whip far behind him following the motion.
+
+Layout: 3 columns x 2 rows grid of 6 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Leave wide empty green space between figures so no two figures or swords touch. Each ROW is one attack; read left to right: WIND-UP, SMEAR, FOLLOW-THROUGH.
+
+Row 1, LUNGING DIAGONAL SLASH:
+1. Wind-up: a coiled crouch about to explode forward, torso twisted away from the enemy, chest low, the greatsword cocked high behind the rear shoulder pointing backward, front knee deeply bent.
+2. Smear: mid-lunge, body almost horizontal flying forward, the blade drawn as ONE thick curved steel smear arc from high-behind to low-in-front (a solid crescent of blurred metal, same colors as the blade), coat tails streaming straight back.
+3. Follow-through: landed in a very deep forward lunge, front knee far forward, back leg straight, torso low over the front knee, the sword swept down and past the front foot with the tip near the ground, free arm flung back.
+
+Row 2, PIVOTING HORIZONTAL CUT (starts from the end of row 1):
+4. Wind-up: still low, pivoting on the front foot, torso twisted, the sword dragged low behind at hip height, eyes on the enemy.
+5. Smear: stepping forward and spinning the hips, the blade drawn as ONE wide flat horizontal steel smear arc across waist height in front of him, coat flared out.
+6. Follow-through: body fully unwound and leaning forward, sword arm extended far back behind him after the cut, chest open toward the enemy, rear heel lifted, ready to launch the next move.
+
+Every frame: the SAME character, side view facing RIGHT; identical character scale in every cell; whole body and whole sword inside its own cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing. The smear arc is part of the sprite (blurred steel), but NO glowing slash effects, no light trails, no afterimages, no dust, no background objects, no extra characters, no text. NOT standing upright, NOT stiff, NOT heavy wood-chopping.

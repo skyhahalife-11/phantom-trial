@@ -1,0 +1,11 @@
+Pixel art anime cut-in for a 2D action game super move: an EXTREME CLOSE-UP of ONE EYE of the character in the reference image (white hair, pale skin, wine-red and crimson color theme), like the dramatic eye-opening close-ups in anime fighting scenes.
+
+Layout: the image is split into 3 equal horizontal wide strips stacked top to bottom (each strip is a very wide cinematic letterbox panel), separated by thin solid black gaps, no text, no numbers. The 3 strips are 3 frames of the same shot, read top to bottom as an animation. The camera and framing are IDENTICAL in all 3 strips; only the eye changes.
+
+Framing of every strip: the face is cropped so tightly that only ONE eye (his left eye, seen from the front-side, the face turned slightly toward the RIGHT), the eyebrow, the bridge of the nose edge and a few strands of white hair falling across the forehead are visible, filling the whole width. The rest of the face is lost in deep shadow. Lighting: cold and dark, almost black shadows with a deep wine-red tint, a thin rim of red light on the skin.
+
+1. TOP strip: the eye is CLOSED, a calm sharp eyelid line with long lashes, eyebrow relaxed, all dark.
+2. MIDDLE strip: the eye snaps HALF OPEN, a sliver of a crimson iris visible under the lid, a faint red glow starting to leak from the slit, eyebrow lowering into a cold glare.
+3. BOTTOM strip: the eye is FULLY OPEN and intense: a bright crimson iris, the pupil is a thin VERTICAL BLADE-SHAPED slit (like a sword seen edge-on), a ring of fine dark engraved runes around the iris like letters carved on a tombstone, a bright white-hot catchlight, crimson light glowing out of the eye and streaking horizontally to the right, the eyebrow lowered in a cold killing glare.
+
+Crisp pixel art with visible hard-edged pixels, limited palette of about 32 colors (pale skin, white hair, deep wine-red, crimson, black), no anti-aliasing, no text, no logo, no border frame, no other characters. The area outside the face in each strip fades to solid black.

@@ -1,0 +1,17 @@
+Pixel art KEY POSES for a 2D side-scrolling action game, in the style of the most fluid anime-style 2D action games (Dead Cells, Guilty Gear, Blazblue). Use the character in the reference image exactly: white shoulder-length straight hair, wine-red fitted long coat with gold buttons and gold trim, black trousers and tall black boots, white bandages on the right forearm with a gold ring at the wrist, and a huge broad greatsword with a flat square tip, dark steel blade with a gold engraved line. He BLOCKS an enemy sword blow like a samurai deflecting (Sekiro style), holding the greatsword with BOTH HANDS ON THE HILT and the blade SLANTED, then counter-attacks. Two alternative versions of the same move, one per row.
+
+Layout: 4 columns x 2 rows grid of 8 equal cells on a solid pure green (#00FF00) background, no grid lines, no text, no numbers. Leave wide empty green space between figures so no two figures or swords touch. Each ROW is one version; read left to right as frames 1 to 4.
+
+ROW 1, HIGH SLANTED DEFLECT (jodan uke-nagashi): the blade is a slanted roof over his head.
+1. Block: side view facing RIGHT, low braced stance, knees bent. Both hands grip the hilt raised in front of his forehead; the blade is SLANTED about 30 degrees over his head, hilt in front and slightly lower, blade rising backward so the tip is up and BEHIND his head, edge facing up, the blade covering his head like a roof. Eyes looking up-forward at the enemy.
+2. Braced: the exact same pose, slightly lower and tighter, coat tails lifting a little (loops with frame 1).
+3. Blow lands: a heavy blow from above presses the slanted blade down close to the top of his head, both arms bent under the weight, knees bent deeper, back foot sliding, coat and hair blown backward, still holding the same slanted angle.
+4. Counter: he springs forward into a deep lunge and cuts in one fast diagonal slash from upper-back to lower-front, the blade drawn as ONE thick curved steel smear arc; free arm flung back, coat tails whipping behind.
+
+ROW 2, FRONT SLANTED GUARD: the blade stands between him and the enemy.
+5. Block: side view facing RIGHT, low braced stance, knees bent. Both hands grip the hilt at chest height in front of him; the blade rises FORWARD and UP at about 45 degrees, the tip in front of and above his face, the flat of the blade facing the enemy.
+6. Braced: the exact same pose, slightly lower and tighter, coat tails lifting a little (loops with frame 5).
+7. Blow lands: a heavy blow from the front knocks the slanted blade back toward his face, arms bent, body recoiling backward, back foot sliding, coat and hair blown backward, still holding the same angle.
+8. Counter: identical to frame 4, one fast diagonal slash with ONE thick curved steel smear arc.
+
+Every frame: the SAME character, side view facing RIGHT; identical character scale in every cell, the same scale as the reference; whole body and whole sword inside its own cell with margin. Crisp pixel art, limited palette of about 24 colors, hard-edged pixels, no anti-aliasing. The smear arc is part of the sprite (blurred steel), but NO glowing effects, no sparks, no light trails, no afterimages, no dust, no background objects, no enemy, no extra characters, no text.
